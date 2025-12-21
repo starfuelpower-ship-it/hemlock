@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+@layer components {
+  .g-panel { @apply bg-zinc-950/65 border border-zinc-700/40 rounded-xl shadow-gothic backdrop-blur; }
+  .g-btn { @apply inline-flex items-center justify-center rounded-lg border border-zinc-700/50 bg-zinc-900/50 px-4 py-2 text-sm hover:bg-zinc-800/60 active:translate-y-[1px] transition; }
+  .g-btn-primary { @apply g-btn border-purple-500/40 bg-purple-900/25 hover:bg-purple-800/30; }
+  .g-pill { @apply inline-flex items-center gap-2 rounded-full border border-zinc-700/40 bg-zinc-950/50 px-3 py-1 text-xs; }
+}
+.g-noise{
+  background-image:
+    radial-gradient(1200px 600px at 50% 20%, rgba(168,85,247,.10), transparent 60%),
+    radial-gradient(900px 450px at 80% 70%, rgba(217,70,239,.08), transparent 55%),
+    radial-gradient(900px 450px at 10% 80%, rgba(99,102,241,.08), transparent 55%),
+    linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.85));
+}
+.g-fog{
+  position:absolute; inset:-40%;
+  background:
+    radial-gradient(closest-side, rgba(255,255,255,.06), transparent 65%),
+    radial-gradient(closest-side, rgba(168,85,247,.08), transparent 60%);
+  filter: blur(30px);
+  opacity:.6;
+  animation: drift 18s ease-in-out infinite alternate;
+}
+@keyframes drift{
+  from{ transform: translate3d(-2%, -1%, 0) scale(1.02); }
+  to  { transform: translate3d(3%, 2%, 0) scale(1.06); }
+}
+.g-emboss{ text-shadow: 0 1px 0 rgba(0,0,0,.65), 0 0 18px rgba(168,85,247,.22); }
