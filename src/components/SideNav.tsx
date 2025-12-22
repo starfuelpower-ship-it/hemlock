@@ -6,7 +6,7 @@ const items = [
   { to: "/pvp", label: "PvP" },
   { to: "/reports", label: "Reports" },
   { to: "/legends", label: "Legends of Hemlock" },
-  { to: "/court", label: "Court" },
+  { to: "/court", label: "Guild" },
   { to: "/domains", label: "Domains" },
 ];
 
@@ -14,7 +14,7 @@ export default function SideNav(props: { pvpLocked?: boolean; pvpLockReason?: st
   return (
     <FramePanel frameUrl={artpack.frames.sideNav} className="w-full" paddingClassName="p-4">
       <div className="text-sm font-semibold flex items-center justify-between">
-        <span>Court Systems</span>
+        <span>Guild Systems</span>
         <span className="text-xs text-zinc-400">▸</span>
       </div>
       {props.pvpLocked ? (

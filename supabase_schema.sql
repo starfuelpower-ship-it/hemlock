@@ -783,3 +783,112 @@ begin
 end;
 $$;
 
+
+-- =====================================================
+-- Compatibility layer for Hemlock "One Pass" prompt (A–E)
+-- Adds required columns (user_id, duration_minutes, read, kind/type/status, rewards, idempotency_key)
+-- without breaking existing code that still uses legacy column names.
+-- =====================================================
+
+-- Ensure pgcrypto for gen_random_uuid
+create extension if not exists pgcrypto;
+
+-- PROFILES: add fields required by prompt
+alter table public.profiles add column if not exists premium boolean default false;
+alter table public.profiles add column if not exists risk_state text default 'Protected';
+alter table public.profiles add column if not exists level int default 1;
+
+-- RESOURCE_STATE: expose user_id + prompt-style timestamps
+alter table public.resource_state add column if not exists user_id uuid;
+update public.resource_state set user_id = player_id where user_id is null;
+alter table public.resource_state alter column user_id set not null;
+create unique index if not exists resource_state_user_id_uq on public.resource_state(user_id);
+
+alter table public.resource_state add column if not exists updated_at timestamptz default now();
+
+-- INVENTORY_ITEMS: prompt-style columns
+alter table public.inventory_items add column if not exists item_key text;
+update public.inventory_items set item_key = coalesce(item_key, item_name) where item_key is null;
+alter table public.inventory_items alter column item_key set not null;
+
+alter table public.inventory_items add column if not exists qty int default 1;
+
+alter table public.inventory_items add column if not exists user_id uuid;
+update public.inventory_items set user_id = player_id where user_id is null;
+alter table public.inventory_items alter column user_id set not null;
+create index if not exists inventory_items_user_id_idx on public.inventory_items(user_id);
+
+-- REPORTS: prompt-style read flag + user_id + kind/title/body
+alter table public.reports add column if not exists user_id uuid;
+update public.reports set user_id = recipient_id where user_id is null;
+alter table public.reports alter column user_id set not null;
+create index if not exists reports_user_id_idx on public.reports(user_id);
+
+alter table public.reports add column if not exists read boolean default false;
+-- keep legacy is_unread; sync read <-> is_unread
+create or replace function public.sync_report_read_flags() returns trigger as $$
+begin
+  if new.read is distinct from old.read then
+    new.is_unread := not new.read;
+  elsif new.is_unread is distinct from old.is_unread then
+    new.read := not new.is_unread;
+  end if;
+  return new;
+end; $$ language plpgsql;
+
+drop trigger if exists trg_reports_sync_read on public.reports;
+create trigger trg_reports_sync_read before update on public.reports
+for each row execute procedure public.sync_report_read_flags();
+
+-- ACTIONS: prompt-style columns (type/status/payload/resolves_at) + user_id
+alter table public.actions add column if not exists user_id uuid;
+update public.actions set user_id = actor_id where user_id is null;
+alter table public.actions alter column user_id set not null;
+create index if not exists actions_user_id_idx on public.actions(user_id);
+
+alter table public.actions add column if not exists type text;
+update public.actions set type = kind where type is null;
+
+alter table public.actions add column if not exists status text;
+update public.actions set status = lower(coalesce(status, 'queued')) where status is null;
+
+alter table public.actions add column if not exists payload jsonb default '{}'::jsonb;
+
+-- DOMAIN_STATE: prompt-style columns + user_id
+alter table public.domain_state add column if not exists user_id uuid;
+update public.domain_state set user_id = player_id where user_id is null;
+alter table public.domain_state alter column user_id set not null;
+create unique index if not exists domain_state_user_id_uq on public.domain_state(user_id);
+
+alter table public.domain_state add column if not exists stored_gold int default 0;
+
+-- OFFLINE_ADVENTURES: prompt-style columns + idempotency_key
+alter table public.offline_adventures add column if not exists user_id uuid;
+update public.offline_adventures set user_id = player_id where user_id is null;
+alter table public.offline_adventures alter column user_id set not null;
+create index if not exists offline_adventures_user_id_idx on public.offline_adventures(user_id);
+
+alter table public.offline_adventures add column if not exists duration_minutes int;
+update public.offline_adventures set duration_minutes = floor(duration_sec/60)::int where duration_minutes is null and duration_sec is not null;
+
+alter table public.offline_adventures add column if not exists started_at timestamptz;
+update public.offline_adventures set started_at = started_at where started_at is not null;
+update public.offline_adventures set started_at = started_at_legacy where started_at is null and started_at_legacy is not null;
+
+alter table public.offline_adventures add column if not exists resolved_at timestamptz;
+
+alter table public.offline_adventures add column if not exists rewards jsonb default '{}'::jsonb;
+
+alter table public.offline_adventures add column if not exists idempotency_key text;
+update public.offline_adventures set idempotency_key = coalesce(idempotency_key, concat('oa-', id::text)) where idempotency_key is null;
+create unique index if not exists offline_adventures_idempotency_uq on public.offline_adventures(idempotency_key);
+
+-- RLS: ensure enabled (policies already exist in base schema; leave them intact)
+alter table public.profiles enable row level security;
+alter table public.resource_state enable row level security;
+alter table public.inventory_items enable row level security;
+alter table public.reports enable row level security;
+alter table public.actions enable row level security;
+alter table public.domain_state enable row level security;
+alter table public.offline_adventures enable row level security;
+

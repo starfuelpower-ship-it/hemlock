@@ -370,3 +370,37 @@
   .hemlock-login__panel{  padding: 18px 16px 16px; transform: translateY(-40px); }
   .hemlock-login__modeTitle{ font-size: 20px; }
 }
+
+/* =========================
+   Global Hemlock Interactivity (hx-*)
+   ========================= */
+
+@layer components {
+  .hx-interactive { @apply select-none transition duration-200 ease-out; }
+  .hx-interactive:hover { @apply brightness-110; }
+
+  .hx-btn { @apply hx-interactive inline-flex items-center justify-center rounded-lg border border-zinc-700/50 bg-zinc-900/40 px-4 py-2 text-sm text-zinc-100 shadow-[0_0_0_1px_rgba(0,0,0,0.45)_inset] outline-none; }
+  .hx-btn:hover { @apply border-purple-400/40 shadow-[0_0_0_1px_rgba(168,85,247,0.25)_inset,0_0_22px_rgba(168,85,247,0.18)]; }
+  .hx-btn:active { transform: translateY(1px) scale(0.99); }
+  .hx-btn:focus-visible { @apply ring-2 ring-purple-400/40 ring-offset-0; }
+  .hx-btn[disabled], .hx-btn[aria-disabled="true"] { @apply opacity-50 cursor-not-allowed; filter:none; box-shadow:none; }
+
+  .hx-tab { @apply hx-interactive inline-flex items-center justify-center rounded-md border border-zinc-700/40 bg-black/25 px-3 py-1 text-xs text-zinc-200; }
+  .hx-tab:hover { @apply border-purple-400/35 shadow-[0_0_18px_rgba(168,85,247,0.16)]; }
+  .hx-tab[aria-selected="true"] { @apply border-purple-400/45 bg-purple-900/25; }
+
+  .hx-row { @apply hx-interactive rounded-xl border border-zinc-700/30 bg-black/30; }
+  .hx-row:hover { @apply border-purple-400/30 shadow-[0_0_26px_rgba(168,85,247,0.14)]; }
+
+  .hx-card { @apply hx-interactive rounded-2xl border border-zinc-700/30 bg-black/30; }
+  .hx-card:hover { @apply border-purple-400/30 shadow-[0_0_34px_rgba(168,85,247,0.14)]; }
+
+  .hx-slot { @apply hx-interactive rounded-lg border border-zinc-700/30 bg-black/20; }
+  .hx-slot:hover { @apply border-purple-400/30 shadow-[0_0_22px_rgba(168,85,247,0.18)]; }
+}
+
+
+@layer components {
+  /* Back-compat: existing buttons */
+  .g-btn { @apply hx-btn; }
+}

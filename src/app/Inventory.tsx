@@ -94,7 +94,7 @@ export default function Inventory() {
                       <div className="text-xs text-zinc-400">Value: {it.value} gold</div>
                     </div>
                     <button
-                      className="g-btn text-sm"
+                      className="hx-btn text-sm"
                       onClick={async () => {
                         try {
                           setErr(null);

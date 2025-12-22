@@ -85,7 +85,7 @@ export default function Court() {
       <TopBar right={<ResourceBar resources={resources} riskLabel={risk} />} />
 
       <div className="mt-4 g-panel p-6">
-        <div className="text-2xl font-semibold g-emboss">Court</div>
+        <div className="text-2xl font-semibold g-emboss">Guild</div>
         <div className="mt-2 text-zinc-300">Treasury, deposits, and court projects (economy sinks). No visuals in this pass.</div>
 
         {err ? <div className="mt-4 text-red-300">{err}</div> : null}
@@ -93,13 +93,13 @@ export default function Court() {
         {!myClan ? (
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <div className="g-panel p-4">
-              <div className="font-semibold">Create a Court</div>
+              <div className="font-semibold">Create a Guild</div>
               <div className="mt-2 flex gap-2">
                 <input
                   className="w-full rounded bg-black/30 px-3 py-2 outline-none"
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
-                  placeholder="Court name"
+                  placeholder="Guild name"
                   disabled={busy}
                 />
                 <button className="g-btn px-4 py-2" disabled={busy} onClick={() => run(() => createClan(createName))}>
@@ -110,7 +110,7 @@ export default function Court() {
             </div>
 
             <div className="g-panel p-4">
-              <div className="font-semibold">Join a Court</div>
+              <div className="font-semibold">Join a Guild</div>
               <div className="mt-3 grid gap-2">
                 {clans.length === 0 ? <div className="text-zinc-400">No courts yet.</div> : null}
                 {clans.map((c) => (
@@ -180,7 +180,7 @@ export default function Court() {
             </div>
 
             <div className="g-panel p-4">
-              <div className="font-semibold">Court Projects (Treasury Sinks)</div>
+              <div className="font-semibold">Guild Projects (Treasury Sinks)</div>
               <div className="mt-2 text-sm text-zinc-400">Projects burn treasury gold into long-term progress (no power spikes).</div>
 
               {isLeader ? (

@@ -284,7 +284,7 @@ useEffect(() => {
               </Link>
 
               <Link className="g-panel p-4 hover:bg-zinc-900/50 transition block" to="/court">
-                <div className="font-semibold">Court</div>
+                <div className="font-semibold">Guild</div>
                 <div className="mt-1 text-sm text-zinc-300">Politics and faction systems (scaffold).</div>
               </Link>
 
