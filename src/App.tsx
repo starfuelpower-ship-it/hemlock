@@ -8,6 +8,7 @@ import Home from "./app/Home";
 import City from "./app/City";
 import Chronicle from "./app/Chronicle";
 import Inventory from "./app/Inventory";
+import Equipment from "./app/Equipment";
 import Profile from "./app/Profile";
 import Reports from "./app/Reports";
 import Pvp from "./app/Pvp";
@@ -30,6 +31,7 @@ export default function App() {
       <Route path="/city" element={<RequireOnboarded><City /></RequireOnboarded>} />
       <Route path="/chronicle" element={<RequireOnboarded><Chronicle /></RequireOnboarded>} />
       <Route path="/inventory" element={<RequireOnboarded><Inventory /></RequireOnboarded>} />
+      <Route path="/equipment" element={<RequireOnboarded><Equipment /></RequireOnboarded>} />
       <Route path="/profile" element={<RequireOnboarded><Profile /></RequireOnboarded>} />
       <Route path="/profile/:id" element={<RequireOnboarded><Profile /></RequireOnboarded>} />
       <Route path="/reports" element={<RequireOnboarded><Reports /></RequireOnboarded>} />
