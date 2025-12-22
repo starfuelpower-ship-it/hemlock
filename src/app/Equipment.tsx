@@ -94,7 +94,7 @@ function rarityGlow(rarity: Item["rarity"]) {
 export default function Equipment() {
   const [inventory, setInventory] = useState<InventoryState | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [resources, setResources] = useState<Resources | null>(null);
+  const [resources, setResources] = useState({ gold: 0, xp: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
   const [risk, setRisk] = useState<string>("Unknown");
 
   const [equipment, setEquipment] = useState<EquipmentState>(() => ({ ...DEFAULT_EQUIPMENT }));
@@ -115,7 +115,7 @@ export default function Equipment() {
       if (!cancelled) setInventory(inv);
 
       const res = await getResources().catch(() => null);
-      if (!cancelled && res) setResources({ gold: res.gold, xp: res.xp });
+      if (!cancelled && res) setResources(res);
 
       const eq = loadEquipment(p?.id || null);
       if (!cancelled) setEquipment(eq);
@@ -173,7 +173,7 @@ export default function Equipment() {
 
   return (
     <PageShell scene="equipment">
-      <TopBar right={<ResourceBar resources={resourcesSafe} riskLabel={risk} />} />
+      <TopBar right={<ResourceBar resources={resources} riskLabel={risk} />} />
 <div className="mx-auto w-full max-w-6xl px-4 pb-10">
         <ScreenFrame src={artpack.screens.equipment}>
           {/* Slot hitboxes */}
