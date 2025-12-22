@@ -94,7 +94,8 @@ function rarityGlow(rarity: Item["rarity"]) {
 export default function Equipment() {
   const [inventory, setInventory] = useState<InventoryState | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [resources, setResources] = useState<{ gold: number; xp: number } | null>(null);
+  const [resources, setResources] = useState<Resources | null>(null);
+  const [risk, setRisk] = useState<string>("Unknown");
 
   const [equipment, setEquipment] = useState<EquipmentState>(() => ({ ...DEFAULT_EQUIPMENT }));
   const [activeSlot, setActiveSlot] = useState<EquipSlotKey | null>(null);
@@ -105,7 +106,10 @@ export default function Equipment() {
 
     (async () => {
       const p = await getProfile().catch(() => null);
-      if (!cancelled) setProfileId(p?.id || null);
+      if (!cancelled) {
+        setProfileId(p?.id || null);
+        if (p?.risk_state) setRisk(p.risk_state);
+      }
 
       const inv = await getInventory().catch(() => null);
       if (!cancelled) setInventory(inv);
@@ -168,11 +172,9 @@ export default function Equipment() {
   }
 
   return (
-    <PageShell bg={artpack.backgrounds.game}>
-      <TopBar />
-      <ResourceBar gold={resources?.gold ?? 0} xp={resources?.xp ?? 0} />
-
-      <div className="mx-auto w-full max-w-6xl px-4 pb-10">
+    <PageShell scene="equipment">
+      <TopBar right={<ResourceBar resources={resourcesSafe} riskLabel={risk} />} />
+<div className="mx-auto w-full max-w-6xl px-4 pb-10">
         <ScreenFrame src={artpack.screens.equipment}>
           {/* Slot hitboxes */}
           {EQUIP_SLOTS.map((slot) => {

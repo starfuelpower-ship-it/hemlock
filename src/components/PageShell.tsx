@@ -8,6 +8,7 @@ type Scene =
   | "pvp"
   | "domains"
   | "inventory"
+  | "equipment"
   | "profile"
   | "chronicle"
   | "court"
