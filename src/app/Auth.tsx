@@ -131,146 +131,132 @@ export default function AuthPage() {
 
   const disabledAll = disabled || !configured;
 
+  
   return (
     <div className="hemlock-login">
       <div className="hemlock-login__bg" aria-hidden="true" />
       <div className="hemlock-login__wrap">
-        <div className="hemlock-login__panel" role="group" aria-label="Hemlock authentication">
-          <div className="hemlock-login__panelArt" aria-hidden="true" />
-          <div className="hemlock-login__panelHotspots">
-            <div className="hemlock-login__hot" style={{ left: "32.55%", top: "29.30%", width: "34.51%", height: "4.88%" }}>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={disabledAll}
-                aria-label="Email"
-              />
-            </div>
-
-            <div className="hemlock-login__hot" style={{ left: "32.55%", top: "41.02%", width: "34.51%", height: "4.88%" }}>
-              <input
-                type="password"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={disabledAll}
-                aria-label="Password"
-              />
-            </div>
-
-            <button
-              type="button"
-              className="hemlock-login__hot"
-              style={{ left: "31.58%", top: "51.27%", width: "1.95%", height: "2.93%" }}
-              onClick={() => setRemember((v) => !v)}
-              disabled={disabledAll}
-              aria-label={remember ? "Remember me on this device" : "Do not remember me"}
-            />
-            <button
-              type="button"
-              className="hemlock-login__hot hemlock-login__link"
-              style={{ left: "33.85%", top: "50.78%", width: "19.54%", height: "3.91%" }}
-              onClick={() => setRemember((v) => !v)}
-              disabled={disabledAll}
-              aria-label="Toggle remember me"
-            />
-
-            <button
-              type="button"
-              className="hemlock-login__hot hemlock-login__btn"
-              style={{ left: "37.76%", top: "59.57%", width: "24.74%", height: "7.81%" }}
-              onClick={mode === "signin" ? onSignIn : mode === "signup" ? onSignUp : onForgot}
-              disabled={disabledAll}
-              aria-label={mode === "signin" ? "Log in" : mode === "signup" ? "Create account" : "Send reset email"}
-            />
-
-            <button
-              type="button"
-              className="hemlock-login__hot hemlock-login__link"
-              style={{ left: "40.36%", top: "72.75%", width: "20.19%", height: "3.91%" }}
-              onClick={() => { setErr(null); setMsg(null); setMode("signup"); }}
-              disabled={disabledAll}
-              aria-label="Create account"
-            />
-
-            <button
-              type="button"
-              className="hemlock-login__hot hemlock-login__link"
-              style={{ left: "40.36%", top: "78.12%", width: "22.14%", height: "3.42%" }}
-              onClick={() => { setErr(null); setMsg(null); setMode("forgot"); }}
-              disabled={disabledAll}
-              aria-label="Forgot password"
-            />
-          </div>
-        </div>
-
-        <div className="hemlock-login__notice" role="status" aria-live="polite">
-          <div className="hemlock-login__noticeTitle">
-            {configured ? (mode === "signin" ? "Enter Hemlock" : mode === "signup" ? "Create your account" : "Recover access") : "Server not configured"}
+        <div className="hemlock-login__panelOverlay hemlock-login__panelOverlay--auth" role="group" aria-label="Hemlock authentication">
+          <div className="hemlock-login__brand">HEMLOCK</div>
+          <div className="hemlock-login__welcome">
+            {mode === "signin" && "WELCOME BACK"}
+            {mode === "signup" && "NEW SERVANT"}
+            {mode === "forgot" && "RECOVERY"}
           </div>
 
-          {!configured ? (
-            <>
-              <div className="hemlock-login__noticeText">
-                Supabase environment variables are missing. You can still enter Offline Mode, but accounts will not work until the server is configured.
-              </div>
-              <div className="hemlock-login__noticeActions">
-                <button className="hemlock-login__smallBtn" onClick={() => nav("/home", { replace: true })}>
-                  Enter Offline Mode
-                </button>
-                <button className="hemlock-login__smallBtn" onClick={() => nav("/setup")}>
-                  View Setup
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              {err && <div className="hemlock-login__noticeText" style={{ color: "rgba(255,160,160,0.95)" }}>{err}</div>}
-              {msg && <div className="hemlock-login__noticeText" style={{ color: "rgba(190,255,220,0.95)" }}>{msg}</div>}
+          <div className="hemlock-login__form">
+            <label className="hemlock-login__label" htmlFor="hemlock-email">E-mail</label>
+            <input
+              id="hemlock-email"
+              className="hemlock-login__input"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={disabledAll}
+              placeholder="you@example.com"
+            />
 
-              {mode === "signup" && (
-                <div style={{ marginTop: 10 }}>
-                  <div className="hemlock-login__noticeText" style={{ marginBottom: 6 }}>
-                    Username (required)
-                  </div>
-                  <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    disabled={disabled}
-                    placeholder="Choose a name (3+ chars)"
-                    autoComplete="username"
-                    style={{
-                      width: "100%",
-                      background: "rgba(10, 8, 14, 0.45)",
-                      border: "1px solid rgba(188, 120, 255, 0.22)",
-                      borderRadius: 12,
-                      padding: "10px 12px",
-                      color: "rgba(246, 240, 255, 0.98)",
-                      outline: "none"
-                    }}
-                  />
-                  <div className="hemlock-login__noticeActions">
-                    <button className="hemlock-login__smallBtn" onClick={() => { setMode("signin"); setErr(null); setMsg(null); }}>
-                      Back to login
-                    </button>
-                  </div>
-                </div>
+            {mode !== "forgot" && (
+              <>
+                <label className="hemlock-login__label" htmlFor="hemlock-password">Password</label>
+                <input
+                  id="hemlock-password"
+                  className="hemlock-login__input"
+                  type="password"
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={disabledAll}
+                  placeholder="••••••••"
+                />
+              </>
+            )}
+
+            {mode === "signup" && (
+              <>
+                <label className="hemlock-login__label" htmlFor="hemlock-username">Username</label>
+                <input
+                  id="hemlock-username"
+                  className="hemlock-login__input"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={disabledAll}
+                  placeholder="Choose a name"
+                />
+              </>
+            )}
+
+            {mode !== "forgot" && (
+              <label className="hemlock-login__row">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  disabled={disabledAll}
+                />
+                <span>Remember me</span>
+              </label>
+            )}
+
+            {err && <div className="hemlock-login__err" role="alert">{err}</div>}
+            {msg && <div className="hemlock-login__msg" role="status">{msg}</div>}
+
+            <button
+              type="button"
+              className="hemlock-login__primaryBtn"
+              onClick={() => {
+                if (mode === "signin") return onSignIn();
+                if (mode === "signup") return onSignUp();
+                return onForgot();
+              }}
+              disabled={disabledAll}
+            >
+              {busy ? "Please wait..." : (mode === "signin" ? "Log in" : mode === "signup" ? "Create account" : "Send reset link")}
+            </button>
+
+            <div className="hemlock-login__links">
+              {mode !== "signin" && (
+                <button type="button" className="hemlock-login__linkBtn" onClick={() => { setMode("signin"); setErr(null); setMsg(null); }} disabled={disabledAll}>
+                  Back to login
+                </button>
               )}
+              {mode !== "signup" && (
+                <button type="button" className="hemlock-login__linkBtn" onClick={() => { setMode("signup"); setErr(null); setMsg(null); }} disabled={disabledAll}>
+                  Create account
+                </button>
+              )}
+              {mode !== "forgot" && (
+                <button type="button" className="hemlock-login__linkBtn" onClick={() => { setMode("forgot"); setErr(null); setMsg(null); }} disabled={disabledAll}>
+                  Forgot password?
+                </button>
+              )}
+            </div>
 
-              {mode === "forgot" && (
-                <div className="hemlock-login__noticeActions">
-                  <button className="hemlock-login__smallBtn" onClick={() => { setMode("signin"); setErr(null); setMsg(null); }}>
-                    Back to login
+            {!isSupabaseConfigured && (
+              <div className="hemlock-login__serverWarn" role="status" aria-live="polite">
+                <div className="hemlock-login__serverWarnTitle">Server not configured</div>
+                <div className="hemlock-login__serverWarnBody">
+                  Supabase environment variables are missing. You can still enter Offline Mode, but accounts will not work until the server is configured.
+                </div>
+                <div className="hemlock-login__serverWarnActions">
+                  <button type="button" className="hemlock-login__secondaryBtn" onClick={() => nav("/home", { replace: true })}>
+                    Enter Offline Mode
+                  </button>
+                  <button type="button" className="hemlock-login__secondaryBtn" onClick={() => nav("/setup")}>
+                    View Setup
                   </button>
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
+
+
 }
