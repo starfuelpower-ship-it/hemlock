@@ -1,6 +1,7 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import FramePanel from "./FramePanel";
 import { artpack } from "../lib/artpack";
+import { useAuth } from "../auth/AuthProvider";
 
 const tabs = [
   { to: "/city", label: "City" },
@@ -10,6 +11,16 @@ const tabs = [
 ];
 
 export default function TopBar(props: { right?: React.ReactNode }) {
+  const nav = useNavigate();
+  const { configured, user, signOut } = useAuth();
+
+  async function doLogout() {
+    try {
+      await signOut();
+    } finally {
+      nav("/", { replace: true });
+    }
+  }
   return (
     <FramePanel frameUrl={artpack.frames.topNav} className="w-full">
       <div className="flex items-center justify-between gap-4">
@@ -43,6 +54,11 @@ export default function TopBar(props: { right?: React.ReactNode }) {
           {props.right}
           <button className="g-btn" title="Account">Account</button>
           <button className="g-btn" title="Settings">Settings</button>
+          {configured && user && (
+            <button className="g-btn" title="Logout" onClick={doLogout}>
+              Logout
+            </button>
+          )}
         </div>
       </div>
     </FramePanel>
