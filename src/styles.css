@@ -34,12 +34,14 @@
    ========================= */
 
 .hemlock-bg{
-  background-image: url('/artpack/backgrounds/home_bg.webp');
+  /* Post-login world background */
+  background-image: url('/artpack/backgrounds/game_bg.png');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
-  filter: saturate(1.05) contrast(1.05) brightness(.78);
-  transform: scale(1.02);
+  /* Preserve image fidelity (no blur/tint filters) */
+  filter: none;
+  transform: none;
 }
 
 .hemlock-shell::before{
@@ -47,18 +49,18 @@
   position:absolute;
   inset:0;
   background:
-    radial-gradient(900px 480px at 50% 18%, rgba(168,85,247,.22), transparent 60%),
-    radial-gradient(800px 420px at 80% 70%, rgba(217,70,239,.12), transparent 58%),
-    linear-gradient(to bottom, rgba(0,0,0,.20), rgba(0,0,0,.78));
+    radial-gradient(900px 480px at 50% 18%, rgba(168,85,247,.10), transparent 62%),
+    radial-gradient(800px 420px at 80% 70%, rgba(217,70,239,.06), transparent 60%),
+    linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,.60));
   pointer-events:none;
 }
 
 /* Scene remix: same world, different “room” composition */
 .scene-city .hemlock-bg{ background-position: 50% 30%; }
-.scene-reports .hemlock-bg{ background-position: 30% 45%; filter: saturate(1.0) contrast(1.08) brightness(.72); }
-.scene-pvp .hemlock-bg{ background-position: 60% 10%; filter: saturate(1.15) contrast(1.12) brightness(.70); }
+.scene-reports .hemlock-bg{ background-position: 30% 45%; }
+.scene-pvp .hemlock-bg{ background-position: 60% 10%; }
 .scene-domains .hemlock-bg{ background-position: 55% 55%; }
-.scene-inventory .hemlock-bg{ background-position: 45% 70%; filter: saturate(1.0) contrast(1.0) brightness(.68); }
+.scene-inventory .hemlock-bg{ background-position: 45% 70%; }
 .scene-profile .hemlock-bg{ background-position: 50% 40%; }
 
 .hemlock-topbar{

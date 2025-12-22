@@ -3,6 +3,7 @@
 export const artpack = {
   backgrounds: {
     home: "/artpack/backgrounds/home_bg.webp",
+    game: "/artpack/backgrounds/game_bg.png",
   },
   // Full-screen UI screen frames (EMPTY UI FRAME ASSETS ONLY)
   screens: {
