@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageShell from "../components/PageShell";
 import TopBar from "../components/TopBar";
 import ResourceBar from "../components/ResourceBar";
@@ -69,6 +70,7 @@ function shortLabel(name: string) {
 }
 
 export default function Inventory() {
+  const navigate = useNavigate();
   const [resources, setResources] = useState({ gold: 0, xp: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
   const [risk, setRisk] = useState("Protected");
   const [inv, setInv] = useState<InventoryState>({ player_id: "offline-player", max_slots: 30, items: [] });
@@ -118,6 +120,16 @@ export default function Inventory() {
         <ScreenFrame src={artpack.screens.inventory}>
           {/* All coordinates are percentage-based over the frame */}
           <div className="absolute inset-0">
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={() => navigate("/profile")}
+              style={{ left: "90.6%", top: "11.7%", width: "3.2%", height: "4.8%" }}
+              className="absolute grid place-items-center rounded-md text-zinc-100/90 transition hover:bg-violet-500/10 hover:ring-2 hover:ring-violet-400/40 focus:outline-none focus:ring-2 focus:ring-violet-400/70"
+            >
+              <span className="text-lg leading-none">×</span>
+            </button>
+
             {/* Clickable slots */}
             {SLOT_RECTS.map((rect, idx) => {
               const it = visibleItems[idx] ?? null;
@@ -146,6 +158,7 @@ export default function Inventory() {
                       "absolute rounded-md",
                       "focus:outline-none focus:ring-2 focus:ring-violet-400/70",
                       isSelected ? "ring-2 ring-violet-400/60" : "hover:ring-1 hover:ring-violet-300/40",
+                      rect.kind === "side" ? "ring-1 ring-violet-400/15" : "",
                     ].join(" ")}
                     style={{
                       left: `${rect.left}%`,
@@ -267,13 +280,13 @@ export default function Inventory() {
                 <button type="button" className="hx-btn text-sm px-4 py-2" aria-current="page">
                   Inventory
                 </button>
-                <button type="button" className="hx-btn text-sm px-4 py-2" onClick={() => (window.location.href = "/equipment")}>
+                <button type="button" className="hx-btn text-sm px-4 py-2" onClick={() => navigate("/equipment")}>
                   Equipment
                 </button>
-                <button type="button" className="hx-btn text-sm px-4 py-2" onClick={() => (window.location.href = "/quests")}>
+                <button type="button" className="hx-btn text-sm px-4 py-2" onClick={() => navigate("/quests")}>
                   Quest Items
                 </button>
-                <button type="button" className="hx-btn text-sm px-4 py-2" onClick={() => (window.location.href = "/crafting")}>
+                <button type="button" className="hx-btn text-sm px-4 py-2" onClick={() => navigate("/crafting")}>
                   Crafting
                 </button>
               </div>
