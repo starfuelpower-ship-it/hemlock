@@ -19,7 +19,7 @@ export default function Profile() {
   const nav = useNavigate();
   const params = useParams();
 
-  const [resources, setResources] = useState({ gold: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
+  const [resources, setResources] = useState({ gold: 0, xp: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
   const [risk, setRisk] = useState("Protected");
 
   const [me, setMe] = useState<ProfileT | null>(null);
@@ -61,13 +61,13 @@ export default function Profile() {
   }, [params.id]);
 
   return (
-    <PageShell>
+    <PageShell scene="profile">
       <TopBar right={<ResourceBar resources={resources} riskLabel={risk} />} />
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-3 space-y-4">
           <SideNav />
-          <div className="g-panel p-4">
+          <div className="hemlock-panel frame-profile p-4">
             <div className="text-sm font-semibold">Profile</div>
             <div className="mt-2 text-xs text-zinc-400">
               Identity is persistent when online. Offline mode uses your local wanderer identity.

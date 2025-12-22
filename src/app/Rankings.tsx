@@ -22,7 +22,7 @@ function isOnline(lastSeen?: string) {
 
 export default function Rankings() {
   const nav = useNavigate();
-  const [resources, setResources] = useState({ gold: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
+  const [resources, setResources] = useState({ gold: 0, xp: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
   const [risk, setRisk] = useState("Protected");
   const [me, setMe] = useState<string>("");
 
@@ -52,7 +52,7 @@ export default function Rankings() {
   const sorted = useMemo(() => rows, [rows]);
 
   return (
-    <PageShell>
+    <PageShell scene="legends">
       <TopBar right={<ResourceBar resources={resources} riskLabel={risk} />} />
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">

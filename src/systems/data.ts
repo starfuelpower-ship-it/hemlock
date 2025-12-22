@@ -1,11 +1,12 @@
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { ensureMyProfile, pingLastSeen } from "../lib/profiles";
-import { Action, ActionKind, ChatMessage, Profile, Report, Resources } from "../types";
+import { Action, ActionKind, ChatMessage, Profile, Report, Resources, InventoryState, Item } from "../types";
 import { loadOfflineState, saveOfflineState, offlineNowIso, offlineUid } from "./offlineStore";
 import { computeVigorRules, applyVigorRegen } from "./vigor";
 import { ACTIONS, queueAction, resolveActionToReport } from "./actions";
 import { makeChatMessage } from "./chat";
-import { applyDomainIncome } from "./domains";
+import { applyGoldDelta, addProcessed, hasProcessed } from "./economy";
+import { collectDomainIncome as domainsCollectDomainIncome, applyDomainIncome } from "./domains";
 import { collectDomainVault } from "./domains";
 
 /** Offline: apply regen + resolve due queued actions */
@@ -25,12 +26,24 @@ function ensureOfflineTick() {
   for (const a of actions) {
     if (a.status === "QUEUED" && new Date(a.resolves_at).getTime() <= now.getTime()) {
       const { goldDelta, report } = resolveActionToReport(a);
+
+      // Idempotency: never apply rewards twice for the same action id.
+      const pid = String(a.id);
+      if (!hasProcessed(st.processed_action_ids ?? [], pid)) {
+        const res = applyGoldDelta(gold, goldDelta);
+        // If a delta would underflow, reject the gold change but still record the resolution.
+        if (res.ok) {
+          gold = res.next;
+        }
+        st.processed_action_ids = addProcessed(st.processed_action_ids ?? [], pid);
+        reports.push(report);
+      }
+
       a.status = "RESOLVED";
       a.resolved_at = now.toISOString();
-      gold += goldDelta;
-      reports.push(report);
     }
   }
+
 
   
   // Domain passive income (offline): accrue into the vault and surface as a Chronicle report.
@@ -65,68 +78,6 @@ const next: any = {
   saveOfflineState(next);
 }
 
-async function resolveDueActionsOnline(uid: string) {
-  if (!isSupabaseConfigured || !supabase) return;
-
-  const nowIso = new Date().toISOString();
-
-  const { data: due, error } = await supabase
-    .from("actions")
-    .select("*")
-    .eq("actor_id", uid)
-    .eq("status", "QUEUED")
-    .lte("resolves_at", nowIso);
-
-  if (error) throw error;
-  if (!due || due.length === 0) return;
-
-  // Current resource state
-  const { data: rs, error: rsErr } = await supabase.from("resource_state").select("*").eq("player_id", uid).maybeSingle();
-  if (rsErr) throw rsErr;
-  let gold = Number(rs?.gold ?? 0);
-
-  for (const row of due as any[]) {
-    const action: Action = {
-      id: String(row.id),
-      actor_id: String(row.actor_id),
-      kind: row.kind as ActionKind,
-      target_id: row.target_id ? String(row.target_id) : null,
-      vigor_cost: Number(row.vigor_cost),
-      gold_delta_min: Number(row.gold_delta_min),
-      gold_delta_max: Number(row.gold_delta_max),
-      duration_seconds: Number(row.duration_seconds),
-      status: row.status as any,
-      created_at: String(row.created_at),
-      resolves_at: String(row.resolves_at),
-      resolved_at: row.resolved_at ? String(row.resolved_at) : null,
-    };
-
-    const { goldDelta, report } = resolveActionToReport(action);
-    gold += goldDelta;
-
-    // Update action
-    const upd = await supabase.from("actions").update({ status: "RESOLVED", resolved_at: nowIso }).eq("id", action.id);
-    if (upd.error) throw upd.error;
-
-    // Insert report
-    const ins = await supabase.from("reports").insert({
-      id: report.id,
-      recipient_id: uid,
-      kind: report.kind,
-      title: report.title,
-      body: report.body,
-      payload: report.payload ?? {},
-      is_unread: true,
-      created_at: report.created_at,
-    });
-    if (ins.error) throw ins.error;
-  }
-
-  // Update gold after processing
-  const upGold = await supabase.from("resource_state").update({ gold }).eq("player_id", uid);
-  if (upGold.error) throw upGold.error;
-}
-
 export async function getProfile(): Promise<Profile> {
   if (!isSupabaseConfigured || !supabase) {
     ensureOfflineTick();
@@ -156,10 +107,11 @@ export async function getResources(): Promise<Resources> {
 
   const { data: sessionRes } = await supabase.auth.getSession();
   const uid = sessionRes.session?.user.id;
-  if (!uid) return { gold: 0, vigor: rules.vigor_cap, vigor_cap: rules.vigor_cap, vigor_regen_minutes: rules.vigor_regen_minutes };
+  if (!uid) return { gold: 0, xp: 0, vigor: rules.vigor_cap, vigor_cap: rules.vigor_cap, vigor_regen_minutes: rules.vigor_regen_minutes };
 
   await resolveDueActionsOnline(uid);
 
+  await supabase.rpc("ensure_resource_state");
   const { data, error } = await supabase.from("resource_state").select("*").eq("player_id", uid).maybeSingle();
   if (error) throw error;
 
@@ -169,17 +121,18 @@ export async function getResources(): Promise<Resources> {
     const ins = await supabase.from("resource_state").insert({
       player_id: uid,
       gold: 1000,
+      xp: 0,
       vigor: rules.vigor_cap,
       vigor_updated_at: nowIso,
     });
     if (ins.error) throw ins.error;
-    return { gold: 1000, vigor: rules.vigor_cap, vigor_cap: rules.vigor_cap, vigor_regen_minutes: rules.vigor_regen_minutes };
+    return { gold: 1000, xp: 0, vigor: rules.vigor_cap, vigor_cap: rules.vigor_cap, vigor_regen_minutes: rules.vigor_regen_minutes };
   }
 
   const last = new Date(String((data as any).vigor_updated_at));
   const now = new Date();
   const regen = applyVigorRegen(
-    { gold: Number((data as any).gold), vigor: Number((data as any).vigor), ...rules },
+    { gold: Number((data as any).gold), xp: Number((data as any).xp ?? 0), vigor: Number((data as any).vigor), ...rules },
     last,
     now
   );
@@ -246,6 +199,10 @@ export async function queuePlayerAction(kind: ActionKind, target_id?: string | n
 
     const t = ACTIONS[kind];
     if (st.resources.vigor < t.vigor_cost) throw new Error("Not enough Vigor.");
+    // Safety cooldown: prevent queuing the same action kind while one is already active.
+    if (st.actions.some((a) => a.kind === kind && a.status === "QUEUED")) {
+      throw new Error("Action already in progress.");
+    }
 
     const action = queueAction(st.profile.id, kind, target_id);
     const next = {
@@ -266,6 +223,17 @@ export async function queuePlayerAction(kind: ActionKind, target_id?: string | n
   const resources = await getResources();
   const t = ACTIONS[kind];
   if (resources.vigor < t.vigor_cost) throw new Error("Not enough Vigor.");
+
+  // Safety cooldown: prevent queuing the same action kind while one is already active.
+  const { data: activeSame, error: activeErr } = await supabase
+    .from("actions")
+    .select("id")
+    .eq("actor_id", uid)
+    .eq("kind", kind)
+    .eq("status", "QUEUED")
+    .limit(1);
+  if (activeErr) throw activeErr;
+  if (activeSame && activeSame.length > 0) throw new Error("Action already in progress.");
 
   const action = queueAction(uid, kind, target_id);
 
@@ -543,42 +511,29 @@ export async function migrateOfflineSnapshotToOnline(): Promise<void> {
   try {
     if (localStorage.getItem(MIGRATE_KEY) === "1") return;
 
+    const st = loadOfflineState() as any;
+    const offlineId = st?.profile?.id;
+    if (!offlineId) {
+      localStorage.setItem(MIGRATE_KEY, "1");
+      return;
+    }
+
     const { data: sess } = await supabase.auth.getSession();
     const uid = sess.session?.user.id;
     if (!uid) return;
 
-    const st = loadOfflineState() as any;
-    if (!st?.profile?.id) {
-      localStorage.setItem(MIGRATE_KEY, "1");
-      return;
+    // No power import. Only a neutral receipt-like note for continuity.
+    if (offlineId !== uid) {
+      await supabase.from("reports").insert({
+        recipient_id: uid,
+        kind: "SYSTEM",
+        title: "Offline Prototype Detected",
+        body: `An offline identity was found (${offlineId}). No resources were imported.`,
+        payload: { kind: "OFFLINE_SNAPSHOT", offlineId },
+        is_unread: true,
+        created_at: new Date().toISOString(),
+      });
     }
-
-    // If offline id equals online id, nothing to do.
-    if (st.profile.id === uid) {
-      localStorage.setItem(MIGRATE_KEY, "1");
-      return;
-    }
-
-    const title = "Legacy Echoes";
-    const body =
-      `An old name clings to your coat.\n\n` +
-      `Offline identity: ${st.profile.username} (${st.profile.id}).\n` +
-      `Domain Tier: ${st.domain?.tier ?? 1}. Vaulted Gold: ${st.domain?.stored_gold ?? 0}.\n` +
-      `Local Gold: ${st.resources?.gold ?? 0}. Unread Reports: ${(st.reports || []).filter((r: any) => r.is_unread).length}.\n\n` +
-      `These echoes are recorded, but not imported as power. Hemlock remembers — without letting the past break the balance.`;
-
-    const report = {
-      recipient_id: uid,
-      kind: "SYSTEM",
-      title,
-      body,
-      payload: { kind: "OFFLINE_SNAPSHOT" },
-      is_unread: true,
-      created_at: new Date().toISOString(),
-    };
-
-    const ins = await supabase.from("reports").insert(report);
-    if (ins.error) throw ins.error;
 
     localStorage.setItem(MIGRATE_KEY, "1");
   } catch {
@@ -586,46 +541,145 @@ export async function migrateOfflineSnapshotToOnline(): Promise<void> {
   }
 }
 
+export async function collectDomainIncome(): Promise<{ earned: number; upkeep: number; charged: number; becameVulnerable: boolean }> {
+  const res = await domainsCollectDomainIncome();
+  // Offline receipts
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState() as any;
+    const rep: Report = {
+      id: offlineUid("rep"),
+      recipient_id: st.profile.id,
+      kind: "SYSTEM",
+      title: "Domain Income Collected",
+      body: `Earned ${res.earned} gold into vault. Upkeep ${res.upkeep}.`,
+      payload: { kind: "DOMAIN_COLLECT", ...res },
+      is_unread: true,
+      created_at: offlineNowIso(),
+    };
+    saveOfflineState({ ...st, reports: [rep, ...st.reports].slice(0, 200) });
+  }
+  return { earned: res.earned, upkeep: res.upkeep, charged: res.charged, becameVulnerable: res.becameVulnerable };
+}
+
+
 
 export async function collectDomainGold(): Promise<{ amount: number }> {
   const res = await collectDomainVault();
   const amount = res.amount;
 
-  if (amount > 0) {
-    // Create a Chronicle report (offline or online depending on mode)
-    if (!isSupabaseConfigured || !supabase) {
-      const st = loadOfflineState() as any;
-      const rep: Report = {
-        id: offlineUid("rep"),
-        recipient_id: st.profile.id,
-        kind: "SYSTEM",
-        title: "The Vault Opens",
-        body: `You unsealed the hush of your Domain. ${amount} gold was transferred to your purse.\n\nSpend it… or fortify the quiet.`,
-        payload: { kind: "DOMAIN_COLLECT", amount },
-        is_unread: true,
-        created_at: offlineNowIso(),
-      };
-      saveOfflineState({ ...st, reports: [rep, ...st.reports].slice(0, 200) });
-    } else {
-      try {
-        const { data: sess } = await supabase.auth.getSession();
-        const uid = sess.session?.user.id;
-        if (uid) {
-          await supabase.from("reports").insert({
-            recipient_id: uid,
-            kind: "SYSTEM",
-            title: "The Vault Opens",
-            body: `You unsealed the hush of your Domain. ${amount} gold was transferred to your purse.\n\nSpend it… or fortify the quiet.`,
-            payload: { kind: "DOMAIN_COLLECT", amount },
-            is_unread: true,
-            created_at: new Date().toISOString(),
-          });
-        }
-      } catch {
-        // ignore
-      }
-    }
+  // Offline: create a neutral receipt report
+  if (amount > 0 && (!isSupabaseConfigured || !supabase)) {
+    const st = loadOfflineState() as any;
+    const rep: Report = {
+      id: offlineUid("rep"),
+      recipient_id: st.profile.id,
+      kind: "SYSTEM",
+      title: "Domain Vault Collected",
+      body: `Vault transfer: +${amount} gold.`,
+      payload: { kind: "DOMAIN_VAULT", amount },
+      is_unread: true,
+      created_at: offlineNowIso(),
+    };
+    saveOfflineState({ ...st, reports: [rep, ...st.reports].slice(0, 200) });
   }
 
   return { amount };
+}
+
+
+export async function getInventory(): Promise<InventoryState> {
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState();
+    return st.inventory;
+  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("AUTH_REQUIRED");
+
+  const { data, error } = await supabase
+    .from("inventory_items")
+    .select("id,item_key,item_name,rarity,value,obtained_from,obtained_at")
+    .eq("owner_id", user.id)
+    .order("obtained_at", { ascending: false });
+  if (error) throw error;
+
+  const items: Item[] = Array.isArray(data)
+    ? data.map((r: any) => ({
+        id: String(r.id),
+        key: String(r.item_key),
+        name: String(r.item_name),
+        rarity: String(r.rarity) as any,
+        value: Number(r.value ?? 0),
+        obtained_from: r.obtained_from ? String(r.obtained_from) : undefined,
+        obtained_at: r.obtained_at ? String(r.obtained_at) : undefined,
+      }))
+    : [];
+
+  return { player_id: user.id, max_slots: 30, items, updated_at: new Date().toISOString() };
+}
+
+export async function sellInventoryItem(itemId: string): Promise<{ ok: boolean; goldGained: number }> {
+  if (!itemId) return { ok: false, goldGained: 0 };
+
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState();
+    const idx = st.inventory.items.findIndex((it) => it.id === itemId);
+    if (idx < 0) return { ok: false, goldGained: 0 };
+    const [item] = st.inventory.items.splice(idx, 1);
+    const { sellValue } = await import("./items");
+    const gained = sellValue(item);
+
+    const gRes = applyGoldDelta(st.resources.gold, gained);
+    if (gRes.ok) st.resources.gold = gRes.next;
+
+    st.reports.unshift({
+      id: offlineUid("rep"),
+      recipient_id: st.profile.id,
+      kind: "SYSTEM",
+      title: "Item Sold",
+      body: `Sold ${item.key} for ${gained} gold.`,
+      payload: { itemId, gained },
+      is_unread: true,
+      created_at: offlineNowIso(),
+    });
+
+    saveOfflineState(st);
+    return { ok: true, goldGained: gained };
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("AUTH_REQUIRED");
+
+  const inv = await getInventory();
+  const idx = inv.items.findIndex((it) => it.id === itemId);
+  if (idx < 0) return { ok: false, goldGained: 0 };
+  const [item] = inv.items.splice(idx, 1);
+
+  const { sellValue } = await import("./items");
+  const gained = sellValue(item);
+
+  // Remove item from inventory_items
+  const { error: delErr } = await supabase
+    .from("inventory_items")
+    .delete()
+    .eq("id", itemId)
+    .eq("owner_id", user.id);
+  if (delErr) throw delErr;
+
+// Credit gold (server-authoritative) + receipt
+  const econ = await supabase.rpc("economy_apply", {
+    p_delta_gold: gained,
+    p_delta_xp: 0,
+    p_idempotency_key: `sell_${itemId}`,
+    p_title: "Item Sold",
+    p_body: `Sold ${item.key} for ${gained} gold.`,
+    p_payload: { itemId, gained, itemKey: item.key },
+  });
+  if (econ.error) throw econ.error;
+return { ok: true, goldGained: gained };
+}
+
+
+// Pass 1 stub: online action resolution will be upgraded to RPC-backed receipts in a later pass.
+async function resolveDueActionsOnline(_uid: string): Promise<void> {
+  return;
 }

@@ -31,3 +31,75 @@
   to  { transform: translate3d(3%, 2%, 0) scale(1.06); }
 }
 .g-emboss{ text-shadow: 0 1px 0 rgba(0,0,0,.65), 0 0 18px rgba(168,85,247,.22); }
+
+
+/* =========================
+   Hemlock Artpack Integration
+   ========================= */
+
+.hemlock-bg{
+  background-image: url('/artpack/backgrounds/home_bg.webp');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  filter: saturate(1.05) contrast(1.05) brightness(.78);
+  transform: scale(1.02);
+}
+
+.hemlock-shell::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(900px 480px at 50% 18%, rgba(168,85,247,.22), transparent 60%),
+    radial-gradient(800px 420px at 80% 70%, rgba(217,70,239,.12), transparent 58%),
+    linear-gradient(to bottom, rgba(0,0,0,.20), rgba(0,0,0,.78));
+  pointer-events:none;
+}
+
+/* Scene remix: same world, different “room” composition */
+.scene-city .hemlock-bg{ background-position: 50% 30%; }
+.scene-reports .hemlock-bg{ background-position: 30% 45%; filter: saturate(1.0) contrast(1.08) brightness(.72); }
+.scene-pvp .hemlock-bg{ background-position: 60% 10%; filter: saturate(1.15) contrast(1.12) brightness(.70); }
+.scene-domains .hemlock-bg{ background-position: 55% 55%; }
+.scene-inventory .hemlock-bg{ background-position: 45% 70%; filter: saturate(1.0) contrast(1.0) brightness(.68); }
+.scene-profile .hemlock-bg{ background-position: 50% 40%; }
+
+.hemlock-topbar{
+  background-image: url('/artpack/frames/top_nav_frame.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(168,85,247,.18);
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+}
+
+.hemlock-sidenav{
+  background-image: url('/artpack/frames/side_nav_frame.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(168,85,247,.14);
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+}
+
+.hemlock-panel{
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(168,85,247,.14);
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+}
+
+/* Specific frame helpers */
+.frame-cta{ background-image: url('/artpack/frames/cta_panel.webp'); }
+.frame-tutorial{ background-image: url('/artpack/frames/tutorial_panel.webp'); }
+.frame-inventory{ background-image: url('/artpack/frames/inventory_panel.webp'); }
+.frame-domain-map{ background-image: url('/artpack/frames/domain_map_frame.webp'); }
+.frame-chronicle-entry{ background-image: url('/artpack/frames/chronicle_entry_frame.webp'); }
+.frame-chronicle-choice{ background-image: url('/artpack/frames/chronicle_choice_frame.webp'); }
+.frame-report-entry{ background-image: url('/artpack/frames/report_entry_frame.webp'); }
+.frame-profile{ background-image: url('/artpack/frames/profile_panel.webp'); }
+.frame-portrait{ background-image: url('/artpack/frames/profile_portrait_frame.webp'); }
+.frame-domain-overview{ background-image: url('/artpack/frames/domain_overview_frame.webp'); }
+

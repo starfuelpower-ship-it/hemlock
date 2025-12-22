@@ -7,7 +7,7 @@ import { Report } from "../types";
 import { sortReportsNewestFirst } from "../systems/reports";
 
 export default function Reports() {
-  const [resources, setResources] = useState({ gold: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
+  const [resources, setResources] = useState({ gold: 0, xp: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
   const [risk, setRisk] = useState("Protected");
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export default function Reports() {
   }
 
   return (
-    <PageShell>
+    <PageShell scene="reports">
       <TopBar right={<ResourceBar resources={resources} riskLabel={risk} />} />
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">

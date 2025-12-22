@@ -34,8 +34,8 @@ export default function App() {
       <Route path="/court" element={<RequireAuth><Court /></RequireAuth>} />
       <Route path="/domains" element={<RequireAuth><Domains /></RequireAuth>} />
       <Route path="/legends" element={<RequireAuth><Legends /></RequireAuth>} />
-      <Route path="/legends" element={<RequireAuth><Legends /></RequireAuth>} />
 
+      <Route path="/rankings" element={<Navigate to="/legends" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   );

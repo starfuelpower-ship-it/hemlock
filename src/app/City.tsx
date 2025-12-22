@@ -9,6 +9,8 @@ import { getProfile, getResources, listReports, collectDomainGold } from "../sys
 import { getMyDomain, domainUpgradeCost } from "../systems/domains";
 import { unreadCount, sortReportsNewestFirst } from "../systems/reports";
 import { Report } from "../types";
+import { getMyOfflineAdventure, startOfflineAdventure, resolveOfflineAdventure, OFFLINE_DURATIONS_HOURS } from "../systems/offlineAdventures";
+import type { OfflineAdventure, OfflineDurationHours } from "../types";
 
 type Obj = {
   title: string;
@@ -39,17 +41,29 @@ export default function City() {
   const [profileName, setProfileName] = useState("Unknown");
   const [level, setLevel] = useState(1);
   const [risk, setRisk] = useState("Protected");
-  const [resources, setResources] = useState({ gold: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
+  const [resources, setResources] = useState({ gold: 0, xp: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
 
   const [domainTier, setDomainTier] = useState(1);
   const [domainVault, setDomainVault] = useState(0);
   const [domainIncome, setDomainIncome] = useState(0);
 
   const [reports, setReports] = useState<Report[]>([]);
+  const [offlineAdv, setOfflineAdv] = useState<OfflineAdventure | null>(null);
+  const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
 
   const pvpLocked = level < 4;
 
+  async function refreshOffline() {
+    try {
+      const adv = await getMyOfflineAdventure();
+      setOfflineAdv(adv);
+    } catch {
+      // ignore
+    }
+  }
   async function refresh() {
+    await refreshOffline();
+
     setErr(null);
     const p = await getProfile();
     setProfileName(p.username || "Unknown");
@@ -79,7 +93,7 @@ export default function City() {
     }
   }
 
-  useEffect(() => {
+useEffect(() => {
     (async () => {
       try {
         await refresh();
@@ -159,7 +173,7 @@ export default function City() {
   const advisor = useMemo(() => advisorLine(risk, objective.title), [risk, objective.title]);
 
   return (
-    <PageShell>
+    <PageShell scene="city">
       <TopBar right={<ResourceBar resources={resources} riskLabel={risk} />} />
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -296,6 +310,80 @@ export default function City() {
             report={newest}
             onOpenReports={() => nav("/reports")}
           />
+
+
+          <div className="g-panel p-4">
+            <div className="text-sm font-semibold g-emboss">Offline Adventure</div>
+            <div className="mt-2 text-sm text-zinc-300">
+              Choose a duration before you go offline. You can claim early for proportional rewards.
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {offlineAdv?.status === "ACTIVE" ? (
+                <>
+                  <button
+                    className="g-btn"
+                    onClick={async () => {
+                      try {
+                        setOfflineMsg(null);
+                        await resolveOfflineAdventure("CLAIM");
+                        await refreshOffline();
+                        setOfflineMsg("Adventure resolved.");
+                      } catch (e) {
+                        setOfflineMsg(String((e as any)?.message || e));
+                      }
+                    }}
+                  >
+                    Claim
+                  </button>
+                  <button
+                    className="g-btn"
+                    onClick={async () => {
+                      try {
+                        setOfflineMsg(null);
+                        await resolveOfflineAdventure("CANCEL");
+                        await refreshOffline();
+                        setOfflineMsg("Adventure canceled early (proportional rewards applied).");
+                      } catch (e) {
+                        setOfflineMsg(String((e as any)?.message || e));
+                      }
+                    }}
+                  >
+                    Cancel Early
+                  </button>
+                </>
+              ) : (
+                OFFLINE_DURATIONS_HOURS.map((h: number) => (
+                  <button
+                    key={h}
+                    className="g-btn"
+                    onClick={async () => {
+                      try {
+                        setOfflineMsg(null);
+                        await startOfflineAdventure(h as OfflineDurationHours);
+                        await refreshOffline();
+                        setOfflineMsg(`Started ${h}h adventure.`);
+                      } catch (e) {
+                        setOfflineMsg(String((e as any)?.message || e));
+                      }
+                    }}
+                  >
+                    Start {h}h
+                  </button>
+                ))
+              )}
+            </div>
+
+            {offlineAdv?.status === "ACTIVE" ? (
+              <div className="mt-3 text-xs text-zinc-400">
+                Active: {offlineAdv.adventure_id} • Started: {new Date(offlineAdv.started_at).toLocaleString()}
+              </div>
+            ) : (
+              <div className="mt-3 text-xs text-zinc-500">No active adventure.</div>
+            )}
+
+            {offlineMsg ? <div className="mt-2 text-xs text-zinc-300">{offlineMsg}</div> : null}
+          </div>
 
           <div className="g-panel p-4">
             <div className="text-sm font-semibold g-emboss">Future Hooks</div>

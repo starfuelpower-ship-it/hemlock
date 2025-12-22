@@ -110,6 +110,7 @@ for update using (auth.uid() = actor_id);
 create table if not exists public.resource_state (
   player_id uuid primary key references public.profiles(id) on delete cascade,
   gold integer not null default 1000,
+  xp integer not null default 0,
   vigor integer not null default 10,
   vigor_updated_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -146,6 +147,69 @@ for insert with check (auth.uid() = player_id);
 
 create policy "domain update by owner" on public.domain_state
 for update using (auth.uid() = player_id);
+
+
+-- INVENTORY ITEMS (one row per item)
+create table if not exists public.inventory_items (
+  id text primary key,
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  item_key text not null,
+  item_name text not null,
+  rarity text not null,
+  value integer not null default 0,
+  obtained_from text,
+  obtained_at timestamptz not null default now()
+);
+
+create index if not exists inventory_items_owner_obtained_at
+  on public.inventory_items(owner_id, obtained_at desc);
+
+alter table public.inventory_items enable row level security;
+
+create policy "inventory items readable by owner" on public.inventory_items
+for select using (auth.uid() = owner_id);
+
+create policy "inventory items insert by owner" on public.inventory_items
+for insert with check (auth.uid() = owner_id);
+
+create policy "inventory items update by owner" on public.inventory_items
+for update using (auth.uid() = owner_id);
+
+create policy "inventory items delete by owner" on public.inventory_items
+for delete using (auth.uid() = owner_id);
+
+
+
+-- OFFLINE ADVENTURES (one active row per player, history can be added later)
+create table if not exists public.offline_adventures (
+  player_id uuid primary key references public.profiles(id) on delete cascade,
+  adventure_id text not null,
+  started_at timestamptz not null,
+  duration_sec integer not null,
+  gold_total integer not null,
+  xp_total integer not null,
+  status text not null default 'ACTIVE',
+  idempotency_key text not null,
+  resolved_at timestamptz
+);
+
+create index if not exists offline_adventures_status
+  on public.offline_adventures(player_id, status);
+
+alter table public.offline_adventures enable row level security;
+
+create policy "offline adventures readable by owner" on public.offline_adventures
+for select using (auth.uid() = player_id);
+
+create policy "offline adventures insert by owner" on public.offline_adventures
+for insert with check (auth.uid() = player_id);
+
+create policy "offline adventures update by owner" on public.offline_adventures
+for update using (auth.uid() = player_id);
+
+create policy "offline adventures delete by owner" on public.offline_adventures
+for delete using (auth.uid() = player_id);
+
 `;
 
 function codeClass() {
@@ -227,7 +291,7 @@ export default function Setup() {
           </div>
           <div className={codeClass()}>-- Hemlock (minimal) Supabase schema
 -- Run this in Supabase SQL Editor.
--- Tables: profiles, chat_messages, reports, actions, domain_state, resource_state
+-- Tables: profiles, chat_messages, reports, actions, domain_state, resource_state, offline_adventures, inventory_items
 -- NOTE: This is intentionally minimal and safe for iteration.
 
 -- PROFILES

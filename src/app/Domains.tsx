@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import PageShell from "../components/PageShell";
 import TopBar from "../components/TopBar";
 import ResourceBar from "../components/ResourceBar";
-import { getProfile, getResources, collectDomainGold } from "../systems/data";
+import { getProfile, getResources, collectDomainGold, collectDomainIncome } from "../systems/data";
 import { getMyDomain, domainUpgradeCost, upgradeMyDomain } from "../systems/domains";
 
 export default function Domains() {
-  const [resources, setResources] = useState({ gold: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
+  const [resources, setResources] = useState({ gold: 0, xp: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
   const [risk, setRisk] = useState("Protected");
   const [domain, setDomain] = useState<any>(null);
   const [busy, setBusy] = useState(false);
@@ -27,6 +27,19 @@ export default function Domains() {
   }
 
   useEffect(() => { refresh(); }, []);
+
+  async function onCollectIncome() {
+    setBusy(true);
+    setError(null);
+    try {
+      await collectDomainIncome();
+      await refresh();
+    } catch (e: any) {
+      setError(e?.message ?? "Collect failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onCollect() {
     setBusy(true);
@@ -58,7 +71,7 @@ export default function Domains() {
   const cost = domain ? domainUpgradeCost(domain.tier) : 0;
 
   return (
-    <PageShell>
+    <PageShell scene="domains">
       <TopBar right={<ResourceBar resources={resources} riskLabel={risk} />} />
       <div className="mt-4 g-panel p-6">
         <div className="text-2xl font-semibold g-emboss">Domains</div>
@@ -81,6 +94,11 @@ export default function Domains() {
 
             <div className="g-panel p-4">
               <div className="text-lg font-semibold">Operations</div>
+
+              <button className="mt-3 g-btn" disabled={busy} onClick={onCollectIncome} type="button">
+                {busy ? "Collecting…" : "Collect Income"}
+              </button>
+              <div className="mt-2 text-xs text-zinc-400">Applies accrued income/upkeep to your vault and records a Chronicle receipt.</div>
 
               <button className="mt-3 g-btn" disabled={busy} onClick={onCollect} type="button">
                 {busy ? "Collecting…" : "Collect Vault"}

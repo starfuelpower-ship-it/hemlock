@@ -73,7 +73,8 @@ function randInt(min: number, max: number) {
 
 export function resolveActionToReport(action: Action): { goldDelta: number; report: Report } {
   const t = ACTIONS[action.kind];
-  const goldDelta = randInt(action.gold_delta_min, action.gold_delta_max);
+  // Never trust client-supplied reward ranges; always derive from ACTIONS.
+  const goldDelta = randInt(t.gold_delta_min, t.gold_delta_max);
 
   const body =
     action.kind === "HUNT"
