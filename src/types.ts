@@ -7,7 +7,10 @@ export type Profile = {
   level: number;
   risk_state: RiskState;
   created_at?: string;
+  last_seen?: string;
 };
+export type LeaderboardEntry = Profile & { gold?: number };
+
 
 export type Resources = { gold: number; vigor: number; vigor_cap: number; vigor_regen_minutes: number };
 
@@ -49,3 +52,16 @@ export type ChatMessage = {
   message: string;
   created_at: string;
 };
+
+export type DomainState = {
+  player_id: string;
+  tier: number;
+  defensive_rating: number;
+  stored_gold: number;
+  protection_state: RiskState;
+  /** Local-only (or derived) income tracking. Online mode uses localStorage fallback to avoid requiring DB migrations. */
+  last_collected_at?: string;
+  income_per_hour?: number;
+  updated_at?: string;
+};
+

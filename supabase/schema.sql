@@ -79,3 +79,7 @@ create policy "reports_update_self" on public.reports for update using (auth.uid
 
 create policy "chat_read_all" on public.chat_messages for select using (true);
 create policy "chat_insert_authed" on public.chat_messages for insert with check (auth.uid() = sender_id);
+
+
+-- Phase 2: track last seen (non-critical)
+alter table public.profiles add column if not exists last_seen timestamptz null;

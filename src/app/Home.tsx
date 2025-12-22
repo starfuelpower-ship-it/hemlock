@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import PageShell from "../components/PageShell";
 import TopBar from "../components/TopBar";
 import SideNav from "../components/SideNav";
@@ -10,10 +11,10 @@ import ChatPanel from "../components/ChatPanel";
 import { getProfile, getResources, listReports, queuePlayerAction } from "../systems/data";
 import { Report } from "../types";
 import { unreadCount, sortReportsNewestFirst } from "../systems/reports";
-import { isSupabaseConfigured } from "../lib/supabase";
 
 export default function Home() {
   const nav = useNavigate();
+  const { configured, user } = useAuth();
   const [profileName, setProfileName] = useState("...");
   const [risk, setRisk] = useState("Protected");
   const [resources, setResources] = useState({ gold: 0, vigor: 0, vigor_cap: 10, vigor_regen_minutes: 15 });
@@ -67,7 +68,7 @@ export default function Home() {
             <div className="font-semibold">Status</div>
             <div className="mt-2 space-y-1">
               <div><span className="text-zinc-400">Player:</span> {profileName}</div>
-              <div><span className="text-zinc-400">Mode:</span> {isSupabaseConfigured ? "Online (Supabase)" : "Offline (local)"}</div>
+              <div><span className="text-zinc-400">Mode:</span> {configured ? (user ? "Online (Account)" : "Online (Signed out)") : "Offline (local)"}</div>
               <div><span className="text-zinc-400">Unread Reports:</span> {unread}</div>
             </div>
           </div>

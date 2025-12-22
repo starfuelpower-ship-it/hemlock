@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { ensureMyProfile } from "../lib/profiles";
+import { migrateOfflineSnapshotToOnline } from "../systems/data";
 
 type AuthState = {
   configured: boolean;
@@ -73,7 +75,22 @@ export function AuthProvider(props: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSupabaseConfigured]);
 
-  const value = useMemo<AuthState>(() => ({
+  
+  // Ensure the authenticated user has a profile row (covers email-confirmation signups).
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    if (!user) return;
+    (async () => {
+      try {
+        await ensureMyProfile(user);
+      await migrateOfflineSnapshotToOnline();
+      } catch (e: any) {
+        // Do not block the app; surface a lightweight error for visibility.
+        setError(e?.message ?? "Failed to initialize profile.");
+      }
+    })();
+  }, [user]);
+const value = useMemo<AuthState>(() => ({
     configured: isSupabaseConfigured,
     loading,
     session,

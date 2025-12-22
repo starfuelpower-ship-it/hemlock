@@ -1,4 +1,4 @@
-import { Action, ChatMessage, Profile, Report, Resources } from "../types";
+import { Action, ChatMessage, DomainState, Profile, Report, Resources } from "../types";
 
 const KEY = "hemlock_offline_v1";
 type OfflineState = {
@@ -7,6 +7,7 @@ type OfflineState = {
   actions: Action[];
   reports: Report[];
   chat: ChatMessage[];
+  domain: DomainState;
   last_tick_iso: string;
 };
 
@@ -21,6 +22,16 @@ export function loadOfflineState(): OfflineState {
     profile: { id: "offline-player", username: "Wanderer", premium: false, level: 1, risk_state: "Protected" },
     resources: { gold: 1000, vigor: 10, vigor_cap: 10, vigor_regen_minutes: 15 },
     actions: [],
+    domain: {
+      player_id: "offline-player",
+      tier: 1,
+      defensive_rating: 10,
+      stored_gold: 0,
+      protection_state: "Protected",
+      last_collected_at: nowIso(),
+      income_per_hour: 25,
+      updated_at: nowIso(),
+    },
     reports: [{
       id: uid("rep"),
       recipient_id: "offline-player",

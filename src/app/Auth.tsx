@@ -63,18 +63,18 @@ export default function AuthPage() {
       if (!email.trim()) throw new Error("Email is required.");
       if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
       if (!username.trim() || username.trim().length < 3) throw new Error("Username must be at least 3 characters.");
+      const uname = username.trim();
       const redirectTo = `${window.location.origin}/`;
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: redirectTo }
+        options: { emailRedirectTo: redirectTo, data: { username: uname } }
       });
       if (error) throw error;
 
       // If we got a session immediately (email confirmations disabled), create profile row now.
       const uid = data.user?.id;
       if (uid) {
-        const uname = username.trim();
         const ins = await supabase.from("profiles").insert({
           id: uid,
           username: uname,

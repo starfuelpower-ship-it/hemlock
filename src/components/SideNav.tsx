@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 const items = [
   { to: "/pvp", label: "PvP" },
   { to: "/reports", label: "Reports" },
+  { to: "/legends", label: "Legends of Hemlock" },
   { to: "/court", label: "Court" },
   { to: "/domains", label: "Domains" },
 ];

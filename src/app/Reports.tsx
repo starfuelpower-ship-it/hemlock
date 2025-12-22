@@ -12,6 +12,9 @@ export default function Reports() {
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [onlyUnread, setOnlyUnread] = useState(false);
+  const [kind, setKind] = useState<string>("ALL");
 
   async function refresh() {
     try {
@@ -31,6 +34,16 @@ export default function Reports() {
   useEffect(() => { refresh(); }, []);
 
   const sorted = useMemo(() => sortReportsNewestFirst(reports), [reports]);
+
+  const filtered = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    return sorted.filter((r) => {
+      if (onlyUnread && !r.is_unread) return false;
+      if (kind !== "ALL" && r.kind !== kind) return false;
+      if (!query) return true;
+      return (r.title + "\n" + r.body).toLowerCase().includes(query);
+    });
+  }, [sorted, q, onlyUnread, kind]);
   const selected = useMemo(() => sorted.find(r => r.id === selectedId) ?? null, [sorted, selectedId]);
 
   async function openReport(id: string) {
@@ -48,9 +61,36 @@ export default function Reports() {
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-4 g-panel overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-700/30 text-sm font-semibold">Reports Inbox</div>
+          <div className="px-4 py-3 border-b border-zinc-700/30">
+            <div className="text-sm font-semibold">Reports Inbox</div>
+            <div className="mt-2 flex flex-wrap gap-2 items-center">
+              <input
+                className="w-full sm:w-auto flex-1 min-w-[180px] rounded-lg border border-zinc-700/40 bg-black/25 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-purple-400/60"
+                placeholder="Search reports…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+              <select
+                className="rounded-lg border border-zinc-700/40 bg-black/25 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-purple-400/60"
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+              >
+                <option value="ALL">All</option>
+                <option value="CHRONICLE">Chronicle</option>
+                <option value="PVP">PvP</option>
+                <option value="SYSTEM">System</option>
+              </select>
+              <button
+                className={"g-btn " + (onlyUnread ? "bg-purple-800/30 border-purple-500/30" : "")}
+                onClick={() => setOnlyUnread((v) => !v)}
+                type="button"
+              >
+                {onlyUnread ? "Unread: On" : "Unread: Off"}
+              </button>
+            </div>
+          </div>
           <div className="max-h-[70vh] overflow-y-auto">
-            {sorted.map((r) => (
+            {filtered.map((r) => (
               <button
                 key={r.id}
                 onClick={() => openReport(r.id)}
@@ -63,7 +103,7 @@ export default function Reports() {
                 <div className="text-xs text-zinc-400 mt-1">{new Date(r.created_at).toLocaleString()}</div>
               </button>
             ))}
-            {!sorted.length ? <div className="p-4 text-sm text-zinc-400">No reports yet.</div> : null}
+            {!filtered.length ? <div className="p-4 text-sm text-zinc-400">No reports match your filters.</div> : null}
           </div>
         </div>
 
