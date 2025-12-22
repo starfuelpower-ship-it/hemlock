@@ -103,3 +103,252 @@
 .frame-portrait{ background-image: url('/artpack/frames/profile_portrait_frame.webp'); }
 .frame-domain-overview{ background-image: url('/artpack/frames/domain_overview_frame.webp'); }
 
+
+
+/* HEMLOCK LOGIN */
+/* HEMLOCK LOGIN */
+.hemlock-login {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--g-text);
+}
+
+.hemlock-login__bg {
+  position: absolute;
+  inset: 0;
+  background-image: url("/artpack/login/login_bg.webp");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: scale(1.02);
+  filter: saturate(1.05) contrast(1.05);
+}
+
+.hemlock-login__vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.75) 70%, rgba(0,0,0,0.92) 100%),
+    linear-gradient(180deg, rgba(12,8,18,0.15) 0%, rgba(0,0,0,0.60) 100%);
+}
+
+.hemlock-login__fog {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(187, 102, 255, 0.08) 0%, rgba(0,0,0,0) 55%),
+    radial-gradient(circle at 70% 60%, rgba(120, 75, 255, 0.10) 0%, rgba(0,0,0,0) 60%),
+    radial-gradient(circle at 45% 80%, rgba(255, 90, 180, 0.06) 0%, rgba(0,0,0,0) 55%);
+  filter: blur(18px);
+  opacity: 0.9;
+  animation: hemlockFog 16s ease-in-out infinite;
+}
+
+@keyframes hemlockFog {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1.02); opacity: 0.75; }
+  50% { transform: translate3d(2%, 1%, 0) scale(1.06); opacity: 0.95; }
+  100% { transform: translate3d(-2%, -1%, 0) scale(1.02); opacity: 0.75; }
+}
+
+
+.hemlock-login__panelFrame{
+  position: relative;
+  width: min(520px, 92vw);
+  max-width: 520px;
+  aspect-ratio: 3 / 4;
+}
+
+.hemlock-login__panelRef{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 50px rgba(0,0,0,0.55));
+}
+
+.hemlock-login__panelOverlay{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 56px 52px 46px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.hemlock-login__wrap {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+}
+
+.hemlock-login__topbar {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.hemlock-login__welcome {
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  letter-spacing: 0.32em;
+  font-size: 12px;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.hemlock-login__accountBtn {
+  pointer-events: auto;
+}
+
+.hemlock-login__panelOverlay {
+  width: min(460px, 92vw);
+  padding: 22px 18px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(176, 120, 255, 0.22);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(162, 92, 255, 0.20) 0%, rgba(0,0,0,0) 55%),
+    linear-gradient(180deg, rgba(18, 10, 28, 0.84) 0%, rgba(8, 6, 12, 0.88) 100%);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.55) inset,
+    0 14px 48px rgba(0,0,0,0.55),
+    0 0 40px rgba(140, 70, 255, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.hemlock-login__brand {
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.hemlock-login__title {
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 44px;
+  letter-spacing: 0.12em;
+  margin: 0;
+  line-height: 1;
+}
+
+.hemlock-login__subtitle {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 8px;
+}
+
+.hemlock-login__fieldLabel {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin: 10px 2px 6px;
+}
+
+.hemlock-login__input {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(176, 120, 255, 0.26);
+  background: rgba(10, 8, 16, 0.55);
+  color: var(--g-text);
+  padding: 0 12px;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.45) inset;
+}
+
+.hemlock-login__input:focus {
+  border-color: rgba(188, 120, 255, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(188, 120, 255, 0.25) inset,
+    0 0 0 3px rgba(188, 120, 255, 0.12);
+}
+
+.hemlock-login__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.hemlock-login__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  opacity: 0.85;
+  user-select: none;
+}
+
+.hemlock-login__cta {
+  margin-top: 14px;
+}
+
+.hemlock-login__primaryBtn {
+  width: 100%;
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid rgba(176, 120, 255, 0.34);
+  background:
+    linear-gradient(180deg, rgba(136, 70, 255, 0.40) 0%, rgba(86, 42, 180, 0.35) 100%);
+  color: var(--g-text);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.55) inset,
+    0 10px 30px rgba(0,0,0,0.50),
+    0 0 22px rgba(152, 82, 255, 0.18);
+  transition: transform .08s ease, filter .15s ease;
+}
+
+.hemlock-login__primaryBtn:hover { filter: brightness(1.08); }
+.hemlock-login__primaryBtn:active { transform: translateY(1px); }
+.hemlock-login__primaryBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.hemlock-login__links {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hemlock-login__linkBtn {
+  background: transparent;
+  border: none;
+  color: rgba(220, 200, 255, 0.86);
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.hemlock-login__linkBtn:hover { color: rgba(255,255,255,0.95); text-decoration: underline; }
+
+.hemlock-login__error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #ffb4c6;
+  opacity: 0.95;
+}
+
+.hemlock-login__hint {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.72;
+  text-align: center;
+  line-height: 1.35;
+}

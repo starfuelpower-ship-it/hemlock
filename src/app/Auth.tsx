@@ -122,127 +122,164 @@ export default function AuthPage() {
   const disabled = busy || (configured && loading);
 
   return (
-    <div className="min-h-screen g-noise relative overflow-hidden">
-      <div className="g-fog pointer-events-none" />
-      <div className="absolute inset-0 -z-10 opacity-60" style={{
-        background:
-          "radial-gradient(900px 500px at 50% 20%, rgba(168,85,247,.16), transparent 55%)," +
-          "radial-gradient(900px 550px at 20% 80%, rgba(217,70,239,.10), transparent 55%)," +
-          "linear-gradient(180deg, rgba(9,9,11,.92), rgba(9,9,11,.96))"
-      }} />
+    <div className="hemlock-login">
+      <div className="hemlock-login__bg" aria-hidden="true" />
+      <div className="hemlock-login__vignette" aria-hidden="true" />
+      <div className="hemlock-login__fog" aria-hidden="true" />
 
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="w-full max-w-md g-panel p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-2xl font-semibold g-emboss tracking-wide">Hemlock</div>
-              <div className="mt-1 text-sm text-zinc-300">Enter the fog. Claim your place in the Chronicle.</div>
-            </div>
-            <div className="text-xs text-zinc-400 text-right">
-              {configured ? "Online" : "Offline"}
-            </div>
+      <div className="hemlock-login__topbar">
+        <div className="hemlock-login__welcome">WELCOME</div>
+
+        <div className="hemlock-login__accountBtn">
+          <button
+            className="g-btn"
+            onClick={() => setMode((m) => (m === "signup" ? "signin" : "signup"))}
+            title={mode === "signup" ? "Switch to Sign in" : "Switch to Create account"}
+            type="button"
+          >
+            ACCOUNT
+          </button>
+        </div>
+      </div>
+
+      <div className="hemlock-login__wrap">
+        <div className="hemlock-login__panelFrame">
+          <img src="/artpack/login/login_panel_ref.webp" alt="Hemlock login panel" className="hemlock-login__panelRef" draggable={false} />
+          <div className="hemlock-login__panelOverlay">
+          <div className="hemlock-login__brand">
+            <h1 className="hemlock-login__title">HEMLOCK</h1>
+            <div className="hemlock-login__subtitle">A gothic browser MMO of eternal night.</div>
           </div>
 
-          {!configured ? (
-            <div className="mt-4 text-sm text-yellow-200/90">
-              Supabase is not configured. Add <b>VITE_SUPABASE_URL</b> and <b>VITE_SUPABASE_ANON_KEY</b> to your environment, then reload.
-              <div className="mt-3">
-                <Link className="g-btn" to="/home">Continue Offline</Link>
-              </div>
-            </div>
-          ) : null}
-
-          {msg ? <div className="mt-4 text-sm text-emerald-200/90">{msg}</div> : null}
-          {err ? <div className="mt-4 text-sm text-red-200/90">{err}</div> : null}
-
-          {configured ? (
+          {mode === "signup" && (
             <>
-              <div className="mt-4 flex gap-2 text-xs">
-                <button className={`g-btn ${mode==="signin" ? "border-purple-400/60" : ""}`} onClick={() => { setMode("signin"); setErr(null); setMsg(null); }} disabled={disabled}>Sign in</button>
-                <button className={`g-btn ${mode==="signup" ? "border-purple-400/60" : ""}`} onClick={() => { setMode("signup"); setErr(null); setMsg(null); }} disabled={disabled}>Create account</button>
-                <button className={`g-btn ${mode==="forgot" ? "border-purple-400/60" : ""}`} onClick={() => { setMode("forgot"); setErr(null); setMsg(null); }} disabled={disabled}>Forgot password</button>
-              </div>
+              <div className="hemlock-login__fieldLabel">Username</div>
+              <input
+                className="hemlock-login__input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                placeholder="Choose a name"
+              />
+            </>
+          )}
 
-              <div className="mt-4 space-y-3">
-                <label className="block">
-                  <div className="text-xs text-zinc-300 mb-1">Email</div>
+          <div className="hemlock-login__fieldLabel">E-mail</div>
+          <input
+            className="hemlock-login__input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            inputMode="email"
+            placeholder="you@domain.com"
+          />
+
+          {mode !== "forgot" && (
+            <>
+              <div className="hemlock-login__fieldLabel">Password</div>
+              <input
+                className="hemlock-login__input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                placeholder="••••••••"
+                type="password"
+              />
+
+              <div className="hemlock-login__row">
+                <label className="hemlock-login__remember">
                   <input
-                    className="w-full rounded-lg border border-zinc-700/40 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-purple-400/60"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@domain.com"
-                    autoComplete="email"
-                    inputMode="email"
-                    disabled={disabled}
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
                   />
+                  Remember me
                 </label>
 
-                {mode === "signup" ? (
-                  <label className="block">
-                    <div className="text-xs text-zinc-300 mb-1">Username</div>
-                    <input
-                      className="w-full rounded-lg border border-zinc-700/40 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-purple-400/60"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Choose a name"
-                      autoComplete="username"
-                      maxLength={20}
-                      disabled={disabled}
-                    />
-                  </label>
-                ) : null}
-
-                {mode !== "forgot" ? (
-                  <label className="block">
-                    <div className="text-xs text-zinc-300 mb-1">Password</div>
-                    <input
-                      className="w-full rounded-lg border border-zinc-700/40 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-purple-400/60"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                      type="password"
-                      disabled={disabled}
-                      onKeyDown={(e) => { if (e.key === "Enter") { mode==="signin" ? onSignIn() : onSignUp(); } }}
-                    />
-                  </label>
-                ) : null}
-
-                {mode === "signin" ? (
-                  <label className="flex items-center gap-2 text-xs text-zinc-300">
-                    <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} disabled={disabled} />
-                    Remember me
-                  </label>
-                ) : null}
-
-                <div className="pt-1 flex gap-2">
-                  {mode === "signin" ? (
-                    <button className="g-btn-primary flex-1" onClick={onSignIn} disabled={disabled}>
-                      {busy ? "Signing in…" : "Sign in"}
-                    </button>
-                  ) : null}
-
-                  {mode === "signup" ? (
-                    <button className="g-btn-primary flex-1" onClick={onSignUp} disabled={disabled}>
-                      {busy ? "Creating…" : "Create account"}
-                    </button>
-                  ) : null}
-
-                  {mode === "forgot" ? (
-                    <button className="g-btn-primary flex-1" onClick={onForgot} disabled={disabled}>
-                      {busy ? "Sending…" : "Send reset link"}
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className="text-xs text-zinc-400 leading-relaxed">
-                  By continuing, you agree to keep your blade sheathed until the fog lifts.
-                </div>
+                <button
+                  type="button"
+                  className="hemlock-login__linkBtn"
+                  onClick={() => {
+                    setErr(null);
+                    setMsg(null);
+                    setMode("forgot");
+                  }}
+                >
+                  Forgot password?
+                </button>
               </div>
             </>
-          ) : null}
+          )}
+
+          <div className="hemlock-login__cta">
+            {mode === "signin" && (
+              <button
+                className="hemlock-login__primaryBtn"
+                onClick={onSignIn}
+                disabled={busy}
+                aria-busy={busy ? "true" : "false"}
+              >
+                {busy ? "Entering…" : "Enter"}
+              </button>
+            )}
+
+            {mode === "signup" && (
+              <button
+                className="hemlock-login__primaryBtn"
+                onClick={onSignUp}
+                disabled={busy}
+                aria-busy={busy ? "true" : "false"}
+              >
+                {busy ? "Creating…" : "Create account"}
+              </button>
+            )}
+
+            {mode === "forgot" && (
+              <button
+                className="hemlock-login__primaryBtn"
+                onClick={onForgot}
+                disabled={busy}
+                aria-busy={busy ? "true" : "false"}
+              >
+                {busy ? "Sending…" : "Send reset email"}
+              </button>
+            )}
+          </div>
+
+          {err && <div className="hemlock-login__error">{err}</div>}
+          {msg && <div className="hemlock-login__hint">{msg}</div>}
+
+          <div className="hemlock-login__links">
+            {mode !== "signup" && (
+              <button
+                type="button"
+                className="hemlock-login__linkBtn"
+                onClick={() => {
+                  setErr(null);
+                  setMsg(null);
+                  setMode("signup");
+                }}
+              >
+                Create account
+              </button>
+            )}
+
+            {mode === "forgot" && (
+              <button
+                type="button"
+                className="hemlock-login__linkBtn"
+                onClick={() => {
+                  setErr(null);
+                  setMsg(null);
+                  setMode("signin");
+                }}
+              >
+                Back to login
+              </button>
+            )}
+          </div>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
+  );}
