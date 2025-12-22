@@ -116,17 +116,11 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  transform: scale(1.02);
-  filter: saturate(1.02) contrast(1.02);
-}
+  image-rendering: auto;
+  will-change: auto;}
 
 .hemlock-login__vignette{
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  /* Keep artwork crisp: only a very light readability vignette (no heavy tint). */
-  background:
-    radial-gradient(1200px 700px at 50% 45%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.22) 60%, rgba(0,0,0,0.40) 100%);
+  display: none;
 }
 
 .hemlock-login__wrap{
@@ -148,9 +142,7 @@
   box-shadow:
     0 0 0 1px rgba(0,0,0,0.45) inset,
     0 20px 60px rgba(0,0,0,0.60),
-    0 0 44px rgba(146, 84, 255, 0.16);
-  backdrop-filter: blur(10px);
-}
+    0 0 44px rgba(146, 84, 255, 0.16);}
 
 .hemlock-login__header{
   text-align: center;
