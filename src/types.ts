@@ -31,6 +31,13 @@ export type InventoryState = {
   updated_at?: string;
 };
 
+export type VaultState = {
+  player_id: string;
+  max_slots: number;
+  items: Item[];
+  updated_at?: string;
+};
+
 export type MarketListingStatus = "ACTIVE" | "SOLD" | "CANCELED";
 
 export type MarketListing = {

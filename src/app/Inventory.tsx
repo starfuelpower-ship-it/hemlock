@@ -5,12 +5,25 @@ import TopBar from "../components/TopBar";
 import ResourceBar from "../components/ResourceBar";
 import ScreenFrame from "../components/ScreenFrame";
 import { artpack } from "../lib/artpack";
-import { getProfile, getResources, getInventory } from "../systems/data";
-import type { InventoryState, Item } from "../types";
+import {
+  getProfile,
+  getResources,
+  getInventory,
+  getVault,
+  moveInventoryItemToVault,
+  moveVaultItemToInventory,
+  sellInventoryItem,
+  sellVaultItem,
+  depositGoldToVault,
+  withdrawGoldFromVault,
+} from "../systems/data";
+import { getMyDomain } from "../systems/domains";
+import type { InventoryState, VaultState, Item } from "../types";
 
-type DragPayload = { from: number; itemId: string };
+type DragPayload = { from: number; itemId: string; fromBag: "inventory" | "vault" };
 
 const STORAGE_KEY = (playerId: string) => `hemlock.inventory.layout.v1.${playerId}`;
+const VAULT_STORAGE_KEY = (playerId: string) => `hemlock.vault.layout.v1.${playerId}`;
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -21,9 +34,9 @@ function safeParse<T>(raw: string | null): T | null {
   }
 }
 
-function buildSlots(inv: InventoryState, savedOrder: (string | null)[] | null): (Item | null)[] {
-  const itemsById = new Map(inv.items.map((it) => [it.id, it]));
-  const slots: (Item | null)[] = Array.from({ length: inv.max_slots || 30 }, () => null);
+function buildSlots(bag: { max_slots: number; items: Item[] }, savedOrder: (string | null)[] | null): (Item | null)[] {
+  const itemsById = new Map(bag.items.map((it) => [it.id, it]));
+  const slots: (Item | null)[] = Array.from({ length: bag.max_slots || 30 }, () => null);
 
   // Apply saved layout first
   if (savedOrder && Array.isArray(savedOrder)) {
@@ -59,9 +72,12 @@ export default function Inventory() {
   const [profile, setProfile] = useState<any>(null);
   const [resources, setResources] = useState<any>(null);
   const [inv, setInv] = useState<InventoryState | null>(null);
+  const [vault, setVault] = useState<VaultState | null>(null);
+  const [domain, setDomain] = useState<any>(null);
 
   const [slots, setSlots] = useState<(Item | null)[]>([]);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [vaultSlots, setVaultSlots] = useState<(Item | null)[]>([]);
+  const [hover, setHover] = useState<{ bag: "inventory" | "vault"; idx: number } | null>(null);
 
   const dragRef = useRef<DragPayload | null>(null);
 
@@ -71,14 +87,22 @@ export default function Inventory() {
       const p = await getProfile();
       const r = await getResources();
       const i = await getInventory();
+      const v = await getVault();
+      const d = await getMyDomain();
       if (!mounted) return;
       setProfile(p);
       setResources(r);
       setInv(i);
+      setVault(v);
+      setDomain(d);
 
       const saved = safeParse<(string | null)[]>(localStorage.getItem(STORAGE_KEY(p?.id || "anon")));
       const built = buildSlots(i, saved);
       setSlots(built);
+
+      const savedVault = safeParse<(string | null)[]>(localStorage.getItem(VAULT_STORAGE_KEY(p?.id || "anon")));
+      const builtVault = buildSlots(v, savedVault);
+      setVaultSlots(builtVault);
     })();
     return () => {
       mounted = false;
@@ -90,28 +114,144 @@ export default function Inventory() {
     localStorage.setItem(STORAGE_KEY(profile.id), JSON.stringify(serializeSlots(slots)));
   }, [slots, profile?.id, inv]);
 
+  useEffect(() => {
+    if (!profile?.id || !vault) return;
+    localStorage.setItem(VAULT_STORAGE_KEY(profile.id), JSON.stringify(serializeSlots(vaultSlots)));
+  }, [vaultSlots, profile?.id, vault]);
+
   const used = useMemo(() => slots.filter(Boolean).length, [slots]);
   const capacity = inv?.max_slots ?? 30;
+  const vaultUsed = useMemo(() => vaultSlots.filter(Boolean).length, [vaultSlots]);
+  const vaultCap = vault?.max_slots ?? 24;
 
-  const onDropTo = (to: number) => {
+  const refreshEconomy = async () => {
+    const [r, d] = await Promise.all([getResources(), getMyDomain()]);
+    setResources(r);
+    setDomain(d);
+  };
+
+  const refreshBags = async () => {
+    const [i, v] = await Promise.all([getInventory(), getVault()]);
+    setInv(i);
+    setVault(v);
+
+    const pid = profile?.id || "anon";
+    const savedInv = safeParse<(string | null)[]>(localStorage.getItem(STORAGE_KEY(pid)));
+    const savedVault = safeParse<(string | null)[]>(localStorage.getItem(VAULT_STORAGE_KEY(pid)));
+    setSlots(buildSlots(i, savedInv));
+    setVaultSlots(buildSlots(v, savedVault));
+  };
+
+  const onDrop = async (toBag: "inventory" | "vault", to: number) => {
     const payload = dragRef.current;
     dragRef.current = null;
-    setHoverIndex(null);
+    setHover(null);
     if (!payload) return;
 
-    setSlots((prev) => {
-      const next = [...prev];
-      const from = payload.from;
-      if (from === to) return prev;
+    const fromBag = payload.fromBag;
+    const from = payload.from;
+    if (fromBag === toBag && from === to) return;
 
-      const a = next[from];
-      const b = next[to];
+    // Same bag: local swap only
+    if (fromBag === toBag) {
+      if (toBag === "inventory") {
+        setSlots((prev) => {
+          const next = [...prev];
+          const a = next[from];
+          const b = next[to];
+          next[to] = a;
+          next[from] = b ?? null;
+          return next;
+        });
+      } else {
+        setVaultSlots((prev) => {
+          const next = [...prev];
+          const a = next[from];
+          const b = next[to];
+          next[to] = a;
+          next[from] = b ?? null;
+          return next;
+        });
+      }
+      return;
+    }
 
-      // Move if target empty, otherwise swap
-      next[to] = a;
-      next[from] = b ?? null;
-      return next;
-    });
+    // Cross bag: authoritative move
+    const movingId = payload.itemId;
+    if (toBag === "vault") {
+      const res = await moveInventoryItemToVault(movingId);
+      if (!res.ok) return;
+    } else {
+      const res = await moveVaultItemToInventory(movingId);
+      if (!res.ok) return;
+    }
+
+    // Rebuild from source-of-truth and then place into desired slot index
+    await refreshBags();
+
+    // After refresh, try to place the moved item into the target slot index (layout only)
+    if (toBag === "vault") {
+      setVaultSlots((prev) => {
+        const next = [...prev];
+        const curIdx = next.findIndex((it) => it?.id === movingId);
+        if (curIdx >= 0) {
+          const a = next[curIdx];
+          const b = next[to];
+          next[to] = a;
+          next[curIdx] = b ?? null;
+        }
+        return next;
+      });
+    } else {
+      setSlots((prev) => {
+        const next = [...prev];
+        const curIdx = next.findIndex((it) => it?.id === movingId);
+        if (curIdx >= 0) {
+          const a = next[curIdx];
+          const b = next[to];
+          next[to] = a;
+          next[curIdx] = b ?? null;
+        }
+        return next;
+      });
+    }
+  };
+
+  const promptAmount = (title: string) => {
+    const raw = window.prompt(title, "100");
+    if (!raw) return null;
+    const n = Math.floor(Number(raw));
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
+  };
+
+  const onDeposit = async () => {
+    const n = promptAmount("Deposit how much gold?");
+    if (!n) return;
+    const res = await depositGoldToVault(n);
+    if (res.ok) await refreshEconomy();
+  };
+
+  const onWithdraw = async () => {
+    const n = promptAmount("Withdraw how much gold?");
+    if (!n) return;
+    const res = await withdrawGoldFromVault(n);
+    if (res.ok) await refreshEconomy();
+  };
+
+  const onSell = async (bag: "inventory" | "vault", item: Item) => {
+    const ok = window.confirm(`Sell for ${Math.max(0, Math.floor(item.value ?? 0))} gold?`);
+    if (!ok) return;
+    if (bag === "inventory") {
+      const res = await sellInventoryItem(item.id);
+      if (!res.ok) return;
+      setSlots((prev) => prev.map((it) => (it?.id === item.id ? null : it)));
+    } else {
+      const res = await sellVaultItem(item.id);
+      if (!res.ok) return;
+      setVaultSlots((prev) => prev.map((it) => (it?.id === item.id ? null : it)));
+    }
+    await refreshEconomy();
   };
 
   return (
@@ -133,6 +273,75 @@ export default function Inventory() {
             </button>
 
             {/* Inventory grid area (matches the frame's right-side grid zone) */}
+            {/* Vault (left-side) */}
+            <div
+              className="absolute"
+              style={{ left: "8%", top: "26%", width: "32%", height: "57%" }}
+            >
+              <div className="hx-vault-head">
+                <div className="hx-vault-gold" title="Vault gold">
+                  {Math.max(0, Math.floor(Number(domain?.stored_gold ?? 0)))}
+                </div>
+                <div className="hx-vault-actions">
+                  <button type="button" aria-label="Deposit" className="hx-vault-btn" onClick={onDeposit}>
+                    ⇩
+                  </button>
+                  <button type="button" aria-label="Withdraw" className="hx-vault-btn" onClick={onWithdraw}>
+                    ⇧
+                  </button>
+                </div>
+              </div>
+
+              <div className="hx-vault-grid" aria-label="Vault">
+                {Array.from({ length: vaultCap }).map((_, idx) => {
+                  const item = vaultSlots[idx] ?? null;
+                  const isHover = hover?.bag === "vault" && hover.idx === idx;
+                  const isOccupied = !!item;
+
+                  return (
+                    <div
+                      key={`v_${idx}`}
+                      className={["hx-slot", isHover ? "hx-slot--hover" : "", isOccupied ? "hx-slot--occupied" : ""].join(" ")}
+                      onMouseEnter={() => setHover({ bag: "vault", idx })}
+                      onMouseLeave={() => setHover((h) => (h?.bag === "vault" && h.idx === idx ? null : h))}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (hover?.bag !== "vault" || hover.idx !== idx) setHover({ bag: "vault", idx });
+                      }}
+                      onDrop={() => onDrop("vault", idx)}
+                    >
+                      <img src={artpack.frames.itemSlot} alt="" draggable={false} className="hx-slot__frame" />
+
+                      {item && (
+                        <div
+                          className="hx-item"
+                          draggable
+                          onClick={(e) => {
+                            if (e.shiftKey) onSell("vault", item);
+                          }}
+                          onDragStart={(e) => {
+                            dragRef.current = { from: idx, itemId: item.id, fromBag: "vault" };
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", item.id);
+                          }}
+                          onDragEnd={() => {
+                            dragRef.current = null;
+                            setHover(null);
+                          }}
+                          title={item.name}
+                        >
+                          <div className="hx-item__glyph">{item.name.slice(0, 1).toUpperCase()}</div>
+                          {(item as any).stack_count > 1 && <div className="hx-stack">{(item as any).stack_count}</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hx-vault-meta">{vaultUsed}/{vaultCap}</div>
+            </div>
+
             <div
               className="absolute"
               style={{
@@ -145,7 +354,7 @@ export default function Inventory() {
               <div className="hx-inv-grid">
                 {Array.from({ length: capacity }).map((_, idx) => {
                   const item = slots[idx] ?? null;
-                  const isHover = hoverIndex === idx;
+                  const isHover = hover?.bag === "inventory" && hover.idx === idx;
                   const isOccupied = !!item;
 
                   return (
@@ -156,13 +365,13 @@ export default function Inventory() {
                         isHover ? "hx-slot--hover" : "",
                         isOccupied ? "hx-slot--occupied" : "",
                       ].join(" ")}
-                      onMouseEnter={() => setHoverIndex(idx)}
-                      onMouseLeave={() => setHoverIndex((h) => (h === idx ? null : h))}
+                      onMouseEnter={() => setHover({ bag: "inventory", idx })}
+                      onMouseLeave={() => setHover((h) => (h?.bag === "inventory" && h.idx === idx ? null : h))}
                       onDragOver={(e) => {
                         e.preventDefault();
-                        if (hoverIndex !== idx) setHoverIndex(idx);
+                        if (hover?.bag !== "inventory" || hover.idx !== idx) setHover({ bag: "inventory", idx });
                       }}
-                      onDrop={() => onDropTo(idx)}
+                      onDrop={() => onDrop("inventory", idx)}
                     >
                       <img
                         src={artpack.frames.itemSlot}
@@ -175,15 +384,18 @@ export default function Inventory() {
                         <div
                           className="hx-item"
                           draggable
+                          onClick={(e) => {
+                            if (e.shiftKey) onSell("inventory", item);
+                          }}
                           onDragStart={(e) => {
-                            dragRef.current = { from: idx, itemId: item.id };
+                            dragRef.current = { from: idx, itemId: item.id, fromBag: "inventory" };
                             e.dataTransfer.effectAllowed = "move";
                             // required for Firefox
                             e.dataTransfer.setData("text/plain", item.id);
                           }}
                           onDragEnd={() => {
                             dragRef.current = null;
-                            setHoverIndex(null);
+                            setHover(null);
                           }}
                           title={item.name}
                         >

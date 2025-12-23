@@ -1,4 +1,4 @@
-import { Action, ChatMessage, DomainState, Profile, Report, Resources, InventoryState, OfflineAdventure } from "../types";
+import { Action, ChatMessage, DomainState, Profile, Report, Resources, InventoryState, VaultState, OfflineAdventure } from "../types";
 
 const KEY = "hemlock_offline_v1";
 type OfflineState = {
@@ -10,6 +10,7 @@ type OfflineState = {
   chat: ChatMessage[];
   domain: DomainState;
   inventory: InventoryState;
+  vault: VaultState;
   offline_adventure: OfflineAdventure | null;
   last_tick_iso: string;
 };
@@ -34,6 +35,9 @@ export function loadOfflineState(): OfflineState {
       if (!st.inventory) st.inventory = { player_id: st.profile.id, max_slots: 30, items: [], updated_at: nowIso() };
       if (!Array.isArray(st.inventory.items)) st.inventory.items = [];
       if (typeof st.inventory.max_slots !== "number") st.inventory.max_slots = 30;
+      if (!st.vault) st.vault = { player_id: st.profile.id, max_slots: 24, items: [], updated_at: nowIso() };
+      if (!Array.isArray(st.vault.items)) st.vault.items = [];
+      if (typeof st.vault.max_slots !== "number") st.vault.max_slots = 24;
       if (typeof st.offline_adventure === "undefined") st.offline_adventure = null;
       if (!Array.isArray(st.actions)) st.actions = [];
       if (!Array.isArray(st.reports)) st.reports = [];
@@ -79,6 +83,7 @@ export function loadOfflineState(): OfflineState {
       created_at: nowIso(),
     }],
     inventory: { player_id: "offline-player", max_slots: 30, items: [], updated_at: new Date().toISOString() },
+    vault: { player_id: "offline-player", max_slots: 24, items: [], updated_at: new Date().toISOString() },
     offline_adventure: null,
     last_tick_iso: nowIso(),
   };

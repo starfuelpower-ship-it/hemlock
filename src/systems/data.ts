@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { ensureMyProfile, pingLastSeen } from "../lib/profiles";
-import { Action, ActionKind, ChatMessage, Profile, Report, Resources, InventoryState, Item } from "../types";
+import { Action, ActionKind, ChatMessage, Profile, Report, Resources, InventoryState, VaultState, Item } from "../types";
 import { loadOfflineState, saveOfflineState, offlineNowIso, offlineUid } from "./offlineStore";
 import { computeVigorRules, applyVigorRegen } from "./vigor";
 import { ACTIONS, queueAction, resolveActionToReport } from "./actions";
@@ -8,6 +8,7 @@ import { makeChatMessage } from "./chat";
 import { applyGoldDelta, addProcessed, hasProcessed } from "./economy";
 import { collectDomainIncome as domainsCollectDomainIncome, applyDomainIncome } from "./domains";
 import { collectDomainVault } from "./domains";
+import { getVaultState, setVaultState, addVaultItem, removeVaultItem } from "./vault";
 
 /** Offline: apply regen + resolve due queued actions */
 function ensureOfflineTick() {
@@ -615,6 +616,209 @@ export async function getInventory(): Promise<InventoryState> {
     : [];
 
   return { player_id: user.id, max_slots: 30, items, updated_at: new Date().toISOString() };
+}
+
+export async function getVault(): Promise<VaultState> {
+  return getVaultState();
+}
+
+export async function moveInventoryItemToVault(itemId: string): Promise<{ ok: boolean }>
+{
+  if (!itemId) return { ok: false };
+
+  // OFFLINE
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState() as any;
+    const idx = st.inventory.items.findIndex((it: Item) => it.id === itemId);
+    if (idx < 0) return { ok: false };
+    const [item] = st.inventory.items.splice(idx, 1);
+    st.vault.items = Array.isArray(st.vault.items) ? st.vault.items : [];
+    st.vault.items.unshift(item);
+    st.inventory.updated_at = offlineNowIso();
+    st.vault.updated_at = offlineNowIso();
+    saveOfflineState(st);
+    return { ok: true };
+  }
+
+  // ONLINE: inventory is DB-backed; vault is localStorage-backed.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("AUTH_REQUIRED");
+
+  const inv = await getInventory();
+  const idx = inv.items.findIndex((it) => it.id === itemId);
+  if (idx < 0) return { ok: false };
+  const [item] = inv.items.splice(idx, 1);
+
+  const { error: delErr } = await supabase
+    .from("inventory_items")
+    .delete()
+    .eq("id", itemId)
+    .eq("owner_id", user.id);
+  if (delErr) throw delErr;
+
+  await addVaultItem(item);
+  return { ok: true };
+}
+
+export async function moveVaultItemToInventory(itemId: string): Promise<{ ok: boolean }>
+{
+  if (!itemId) return { ok: false };
+
+  // OFFLINE
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState() as any;
+    const idx = st.vault.items.findIndex((it: Item) => it.id === itemId);
+    if (idx < 0) return { ok: false };
+    const [item] = st.vault.items.splice(idx, 1);
+    st.inventory.items = Array.isArray(st.inventory.items) ? st.inventory.items : [];
+    st.inventory.items.unshift(item);
+    st.inventory.updated_at = offlineNowIso();
+    st.vault.updated_at = offlineNowIso();
+    saveOfflineState(st);
+    return { ok: true };
+  }
+
+  // ONLINE: vault localStorage -> inventory DB
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("AUTH_REQUIRED");
+
+  const item = await removeVaultItem(itemId);
+  if (!item) return { ok: false };
+
+  const { error: insErr } = await supabase
+    .from("inventory_items")
+    .insert({
+      owner_id: user.id,
+      item_key: item.key,
+      item_name: item.name,
+      rarity: item.rarity,
+      value: item.value,
+      obtained_from: item.obtained_from ?? null,
+      obtained_at: item.obtained_at ?? new Date().toISOString(),
+    });
+  if (insErr) throw insErr;
+
+  return { ok: true };
+}
+
+export async function sellVaultItem(itemId: string): Promise<{ ok: boolean; goldGained: number }> {
+  if (!itemId) return { ok: false, goldGained: 0 };
+
+  // Remove from vault first (idempotent enough for UI)
+  const removed = await removeVaultItem(itemId);
+  if (!removed) return { ok: false, goldGained: 0 };
+
+  const { sellValue } = await import("./items");
+  const gained = sellValue(removed);
+
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState() as any;
+    const gRes = applyGoldDelta(st.resources.gold, gained);
+    if (gRes.ok) st.resources.gold = gRes.next;
+    st.reports.unshift({
+      id: offlineUid("rep"),
+      recipient_id: st.profile.id,
+      kind: "SYSTEM",
+      title: "Item Sold",
+      body: `Sold ${removed.key} for ${gained} gold.`,
+      payload: { itemId, gained, from: "vault" },
+      is_unread: true,
+      created_at: offlineNowIso(),
+    });
+    saveOfflineState(st);
+    return { ok: true, goldGained: gained };
+  }
+
+  // ONLINE: credit gold via receipts
+  const econ = await supabase.rpc("economy_apply", {
+    p_delta_gold: gained,
+    p_delta_xp: 0,
+    p_idempotency_key: `sell_vault_${itemId}`,
+    p_title: "Item Sold",
+    p_body: `Sold ${removed.key} for ${gained} gold.`,
+    p_payload: { itemId, gained, itemKey: removed.key, from: "vault" },
+  });
+  if (econ.error) throw econ.error;
+
+  return { ok: true, goldGained: gained };
+}
+
+export async function depositGoldToVault(amount: number): Promise<{ ok: boolean; deposited: number }> {
+  const n = Math.floor(Number(amount));
+  if (!Number.isFinite(n) || n <= 0) return { ok: false, deposited: 0 };
+
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState() as any;
+    const gRes = applyGoldDelta(st.resources.gold, -n);
+    if (!gRes.ok) return { ok: false, deposited: 0 };
+    st.resources.gold = gRes.next;
+    st.domain.stored_gold = Math.max(0, Math.floor(Number(st.domain.stored_gold ?? 0)) + n);
+    saveOfflineState(st);
+    return { ok: true, deposited: n };
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("AUTH_REQUIRED");
+
+  // Spend wallet gold via economy_apply
+  const econ = await supabase.rpc("economy_apply", {
+    p_delta_gold: -n,
+    p_delta_xp: 0,
+    p_idempotency_key: `vault_deposit_${user.id}_${Date.now()}`,
+    p_title: "Vault Deposit",
+    p_body: `Deposited ${n} gold into the vault.`,
+    p_payload: { kind: "VAULT_DEPOSIT", amount: n },
+  });
+  if (econ.error) throw econ.error;
+
+  // Credit domain vault
+  const { data: domRow, error: domErr } = await supabase.from("domain_state").select("stored_gold").eq("player_id", user.id).maybeSingle();
+  if (domErr) throw domErr;
+  const prev = Math.max(0, Math.floor(Number((domRow as any)?.stored_gold ?? 0)));
+  const next = prev + n;
+  const upd = await supabase.from("domain_state").update({ stored_gold: next, updated_at: new Date().toISOString() }).eq("player_id", user.id);
+  if (upd.error) throw upd.error;
+
+  return { ok: true, deposited: n };
+}
+
+export async function withdrawGoldFromVault(amount: number): Promise<{ ok: boolean; withdrawn: number }> {
+  const n = Math.floor(Number(amount));
+  if (!Number.isFinite(n) || n <= 0) return { ok: false, withdrawn: 0 };
+
+  if (!isSupabaseConfigured || !supabase) {
+    const st = loadOfflineState() as any;
+    const stored = Math.max(0, Math.floor(Number(st.domain.stored_gold ?? 0)));
+    if (stored < n) return { ok: false, withdrawn: 0 };
+    st.domain.stored_gold = stored - n;
+    const gRes = applyGoldDelta(st.resources.gold, n);
+    if (gRes.ok) st.resources.gold = gRes.next;
+    saveOfflineState(st);
+    return { ok: true, withdrawn: n };
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("AUTH_REQUIRED");
+
+  const { data: domRow, error: domErr } = await supabase.from("domain_state").select("stored_gold").eq("player_id", user.id).maybeSingle();
+  if (domErr) throw domErr;
+  const prev = Math.max(0, Math.floor(Number((domRow as any)?.stored_gold ?? 0)));
+  if (prev < n) return { ok: false, withdrawn: 0 };
+  const nextStored = prev - n;
+  const upd = await supabase.from("domain_state").update({ stored_gold: nextStored, updated_at: new Date().toISOString() }).eq("player_id", user.id);
+  if (upd.error) throw upd.error;
+
+  const econ = await supabase.rpc("economy_apply", {
+    p_delta_gold: n,
+    p_delta_xp: 0,
+    p_idempotency_key: `vault_withdraw_${user.id}_${Date.now()}`,
+    p_title: "Vault Withdrawal",
+    p_body: `Withdrew ${n} gold from the vault.`,
+    p_payload: { kind: "VAULT_WITHDRAW", amount: n },
+  });
+  if (econ.error) throw econ.error;
+
+  return { ok: true, withdrawn: n };
 }
 
 export async function sellInventoryItem(itemId: string): Promise<{ ok: boolean; goldGained: number }> {
