@@ -21,7 +21,17 @@ export default function PageShell(props: { children: ReactNode; scene?: Scene })
   const isAuth = scene === "auth";
   const bg = isAuth ? artpack.backgrounds.home : artpack.backgrounds.game;
   return (
-    <div className={`min-h-screen relative overflow-hidden bg-black hemlock-shell scene-${scene}`}>
+    <div
+      className={`min-h-screen relative overflow-hidden bg-black hemlock-shell scene-${scene}`}
+      // Hard fallback: paint the background on the shell itself so screens never render to pure black
+      // even if the inner .hemlock-bg layer is missing or fails to load.
+      style={{
+        backgroundImage: `url(${bg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center top",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       <div
         className="absolute inset-0 hemlock-bg"
         aria-hidden
